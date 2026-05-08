@@ -5,7 +5,7 @@
   --paper: #e5e7eb;
   --panel: #ffffff;
   --calendar-ink: #05070a;
-  --calendar-school-day: rgba(237, 237, 237, 0.72);
+  --calendar-school-day: #ffffff;
   --calendar-day-off: #ddf6e7c2;
   --calendar-focused-day: #1f8f62;
   --calendar-max-width: 760px;
@@ -42,7 +42,7 @@
   --danger: #c23a3a;
   --shadow: 0 8px 30px rgba(36, 44, 62, 0.18), 0 2px 10px rgba(36, 44, 62, 0.08);
   font-family:
-    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Quicksand, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
     sans-serif;
 }
 
@@ -126,8 +126,6 @@ body {
   border: 0;
   cursor: pointer;
   pointer-events: auto;
-  -webkit-text-stroke: inherit;
-  paint-order: inherit;
 }
 
 .countdown-title-toggle:focus-visible {
@@ -141,20 +139,12 @@ body {
   cursor: default;
 }
 
-.countdown-header h1,
-.precise-countdown {
-  -webkit-text-stroke: 6px #ffffff;
-  paint-order: stroke fill;
-}
-
 .countdown-header .countdown-title-final-day {
   --rainbow-fill-width: 34rem;
 
   position: relative;
   color: transparent;
   text-shadow: none;
-  -webkit-text-stroke: 0;
-  paint-order: normal;
   transform-origin: 50% 58%;
   animation: countdown-final-day-shiver 0.35s ease-in-out infinite;
 }
@@ -164,8 +154,7 @@ body {
   inset: 0;
   z-index: 0;
   color: transparent;
-  text-shadow: 0 1px 18px rgba(255, 255, 255, 0.86);
-  -webkit-text-stroke: 6px #ffffff;
+  -webkit-text-stroke: 10px #ffffff;
   paint-order: stroke fill;
 }
 
@@ -175,8 +164,6 @@ body {
   display: block;
   color: transparent;
   text-shadow: none;
-  -webkit-text-stroke: 0;
-  paint-order: normal;
   background-image: repeating-linear-gradient(
     90deg,
     #e63946 0,
@@ -232,8 +219,6 @@ body {
   height: 1px;
   overflow: visible;
   pointer-events: none;
-  -webkit-text-stroke: 0;
-  paint-order: normal;
 }
 
 .confetti-burst-particle {
@@ -442,7 +427,7 @@ body::-webkit-scrollbar,
   gap: 12px;
   width: 100%;
   padding: 9px 10px;
-  color: var(--ink);
+  /* color: var(--calendar-focused-day); */
   font: inherit;
   text-align: left;
   border: 0;
@@ -462,7 +447,7 @@ body::-webkit-scrollbar,
 
 .date-list .day-off-item-count {
   justify-self: end;
-  color: var(--muted);
+  color: var(--calendar-focused-day);
   font-weight: 750;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
@@ -707,7 +692,10 @@ body::-webkit-scrollbar,
 .react-calendar-shell .calendar-month-fill {
   inset: 0;
   z-index: 0;
-  background: #ffffff;
+  background: #ffffff36;
+  /* border: 2px solid #000f; */
+  border-radius: 4px;
+  margin: 3px;
 }
 
 .react-calendar-shell .calendar-last-day-sunburst {
@@ -814,6 +802,10 @@ body::-webkit-scrollbar,
 
 .react-calendar-shell .calendar-day-number {
   z-index: 4;
+  font-size: 1.5em;
+}
+
+.react-calendar-shell .calendar-day-last-school-day > .calendar-day-number {
   -webkit-text-stroke: 4px #ffffff;
   paint-order: stroke fill;
 }
@@ -824,7 +816,7 @@ body::-webkit-scrollbar,
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 2em;
+  font-size: 3em;
   line-height: 1;
 }
 
@@ -850,11 +842,6 @@ body::-webkit-scrollbar,
   transform: translateX(-50%);
 }
 
-.react-calendar-shell .calendar-month-label {
-  -webkit-text-stroke: 3px #ffffff;
-  paint-order: stroke fill;
-}
-
 /* .react-calendar-shell .calendar-day-number { */
   /* opacity: 0.5; */
 /* } */
@@ -867,6 +854,7 @@ body::-webkit-scrollbar,
 
 .react-calendar-shell .calendar-day-fill.school-day {
   background: var(--calendar-school-day);
+  /* border: 2px solid #000f; */
 }
 
 .react-calendar-shell .calendar-day-fill.school-day.last-school-day {
@@ -899,9 +887,13 @@ body::-webkit-scrollbar,
 
 .react-calendar-shell .calendar-day-passed-mark {
   inset: 8px;
-  z-index: 2;
+  z-index: 5;
   overflow: hidden;
   border-radius: 4px;
+  transform: translate(var(--passed-mark-x, 0), var(--passed-mark-y, 0))
+    rotate(var(--passed-mark-rotate, 0deg))
+    scale(var(--passed-mark-scale, 1));
+  transform-origin: center;
 }
 
 .react-calendar-shell .calendar-day-passed-mark-lines {
@@ -911,11 +903,18 @@ body::-webkit-scrollbar,
   height: 100%;
 }
 
-.react-calendar-shell .calendar-day-passed-mark-lines line {
-  stroke: var(--danger);
+.react-calendar-shell .calendar-day-passed-mark-stroke {
+  fill: none;
+  stroke: #e90000ad;
   stroke-linecap: round;
-  stroke-width: 3px;
+  stroke-linejoin: round;
+  stroke-width: 4.2px;
   vector-effect: non-scaling-stroke;
+}
+
+.react-calendar-shell .calendar-day-passed-mark-stroke-echo {
+  opacity: 0.48;
+  stroke-width: 2.4px;
 }
 
 .react-calendar-shell .calendar-finish-flag {

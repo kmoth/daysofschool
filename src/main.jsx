@@ -85,6 +85,25 @@ function seededRandom(value) {
   return random - Math.floor(random);
 }
 
+function getDateSeed(value) {
+  return [...value].reduce((seed, character, index) => seed + character.charCodeAt(0) * (index + 1), 0);
+}
+
+function getPassedMarkStyle(date) {
+  const seed = getDateSeed(date);
+  const rotation = (seededRandom(seed + 17) - 0.5) * 14;
+  const offsetX = Math.round((seededRandom(seed + 29) - 0.5) * 6);
+  const offsetY = Math.round((seededRandom(seed + 41) - 0.5) * 6);
+  const scale = 0.94 + seededRandom(seed + 53) * 0.14;
+
+  return {
+    "--passed-mark-rotate": `${rotation.toFixed(2)}deg`,
+    "--passed-mark-x": `${offsetX}px`,
+    "--passed-mark-y": `${offsetY}px`,
+    "--passed-mark-scale": scale.toFixed(3),
+  };
+}
+
 function getConfettiDurationSeconds(index) {
   return (
     CONFETTI_DURATION_START_SECONDS +
@@ -588,10 +607,12 @@ function CalendarDay({
         />
       )}
       {isPastMarkedDay && (
-        <span className="calendar-day-passed-mark" aria-hidden="true">
+        <span className="calendar-day-passed-mark" style={getPassedMarkStyle(date)} aria-hidden="true">
           <svg className="calendar-day-passed-mark-lines" viewBox="0 0 100 100" preserveAspectRatio="none" focusable="false">
-            <line x1="4" y1="4" x2="96" y2="96" />
-            <line x1="96" y1="4" x2="4" y2="96" />
+            <path className="calendar-day-passed-mark-stroke" d="M10 13 C24 27 37 41 49 52 C63 65 76 77 91 88" />
+            <path className="calendar-day-passed-mark-stroke calendar-day-passed-mark-stroke-echo" d="M14 10 C27 29 41 43 54 56 C68 69 79 78 87 91" />
+            <path className="calendar-day-passed-mark-stroke" d="M89 12 C74 27 60 42 48 54 C34 67 22 78 11 90" />
+            <path className="calendar-day-passed-mark-stroke calendar-day-passed-mark-stroke-echo" d="M92 16 C75 31 62 44 51 55 C37 68 24 76 14 87" />
           </svg>
         </span>
       )}
@@ -846,7 +867,7 @@ function App() {
       <div className="settings-panel-frame">
         <aside className="settings-panel">
           <div className="settings-panel-heading">
-            <h2>Days off</h2>
+            <h2>Highlights</h2>
             {validSchedule && (
               <DayFocusShortcuts
                 lastDayISO={lastDayISO}

@@ -39,7 +39,7 @@ const CALENDAR_WEEK_STARTS_ON = 0;
 const SUMMER_VIDEO_EMBED_SRC = "https://www.youtube.com/embed/mBqiC5ox8Bw";
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-const monthLabelFormatter = new Intl.DateTimeFormat(undefined, { month: "long" });
+const monthLabelFormatter = new Intl.DateTimeFormat(undefined, { month: "short" });
 const CONFETTI_DURATION_START_SECONDS = 1.3;
 const CONFETTI_DURATION_RANGE_SECONDS = 0.4;
 const CONFETTI_DURATION_RANDOM_SEED = 31;
@@ -318,7 +318,7 @@ function useDocumentCalendarFocus(focusRequestId, focusDay, layoutKey) {
   }, [focusDay, focusRequestId, layoutKey]);
 }
 
-function useMirroredTopGapCssVar(ref, propertyName) {
+function useHeaderGapCssVar(ref, propertyName) {
   const [position, setPosition] = useState(null);
 
   useLayoutEffect(() => {
@@ -328,7 +328,11 @@ function useMirroredTopGapCssVar(ref, propertyName) {
     const updatePosition = () => {
       if (!ref.current) return;
       const rect = ref.current.getBoundingClientRect();
-      const nextPosition = Math.round(rect.bottom + rect.top);
+      const configuredGap = Number.parseFloat(
+        window.getComputedStyle(document.documentElement).getPropertyValue("--calendar-header-gap"),
+      );
+      const gap = Number.isFinite(configuredGap) ? configuredGap : rect.top;
+      const nextPosition = Math.round(rect.bottom + gap);
       document.documentElement.style.setProperty(propertyName, `${nextPosition}px`);
       setPosition((currentPosition) => (currentPosition === nextPosition ? currentPosition : nextPosition));
     };
@@ -515,7 +519,15 @@ function endOfPaddedCalendar(date) {
   return new Date(date.getFullYear(), date.getMonth() + CALENDAR_END_PADDING_MONTHS + 1, 0);
 }
 
-function CalendarDay({ currentDayHasNoSchoolLeft, date, schedule, selectedDay, todayISO }) {
+function CalendarDay({
+  currentDayHasNoSchoolLeft,
+  date,
+  lastDayISO,
+  onSelectDay,
+  schedule,
+  selectedDay,
+  todayISO,
+}) {
   const parsedDate = parseISO(date);
   const day = parsedDate?.getDate() ?? "";
   const dayTypeClass = getCalendarDayTypeClass(date, schedule);
@@ -526,7 +538,8 @@ function CalendarDay({ currentDayHasNoSchoolLeft, date, schedule, selectedDay, t
   const isDisabled = !isSchoolDate && !isDayOff;
   const shouldUsePassedMark = isSchoolDate || isDayOff;
   const isPastMarkedDay = shouldUsePassedMark && (date < todayISO || (isCurrentDay && currentDayHasNoSchoolLeft));
-  const isLastSchoolDay = date === toISO(schedule.lastDay);
+  const isLastSchoolDay = date === lastDayISO;
+  const isSelectable = isDayOff || isLastSchoolDay;
   const isCurrentLastSchoolDay = isCurrentDay && isLastSchoolDay;
   const selectedOutlineClass = getSelectedOutlineClass({
     isDayOff,
@@ -544,6 +557,8 @@ function CalendarDay({ currentDayHasNoSchoolLeft, date, schedule, selectedDay, t
         isCurrentDay && "Cal__Day-module__today",
         isDisabled ? "Cal__Day__disabled" : "Cal__Day__enabled",
         isDisabled ? "Cal__Day-module__disabled" : "Cal__Day-module__enabled",
+        isSelectable && "calendar-day-selectable",
+        isLastSchoolDay && "calendar-day-last-school-day",
       )}
       aria-current={isCurrentDay ? "date" : undefined}
       aria-label={date}
@@ -595,6 +610,15 @@ function CalendarDay({ currentDayHasNoSchoolLeft, date, schedule, selectedDay, t
       >
         {day}
       </span>
+      {isSelectable && (
+        <button
+          type="button"
+          className="calendar-day-select-button"
+          aria-label={`Select ${date}`}
+          aria-pressed={isSelectedDay}
+          onClick={() => onSelectDay(date)}
+        />
+      )}
     </li>
   );
 }
@@ -609,7 +633,15 @@ function CalendarWeekdays() {
   );
 }
 
-function CalendarMonth({ currentDayHasNoSchoolLeft, monthStart, schedule, selectedDay, todayISO }) {
+function CalendarMonth({
+  currentDayHasNoSchoolLeft,
+  lastDayISO,
+  monthStart,
+  onSelectDay,
+  schedule,
+  selectedDay,
+  todayISO,
+}) {
   const days = getDaysInMonth(monthStart);
   const leadingBlankDays = (monthStart.getDay() - CALENDAR_WEEK_STARTS_ON + 7) % 7;
 
@@ -629,6 +661,8 @@ function CalendarMonth({ currentDayHasNoSchoolLeft, monthStart, schedule, select
               key={iso}
               currentDayHasNoSchoolLeft={currentDayHasNoSchoolLeft}
               date={iso}
+              lastDayISO={lastDayISO}
+              onSelectDay={onSelectDay}
               schedule={schedule}
               selectedDay={selectedDay}
               todayISO={todayISO}
@@ -640,14 +674,24 @@ function CalendarMonth({ currentDayHasNoSchoolLeft, monthStart, schedule, select
   );
 }
 
-function CalendarMonthList({ currentDayHasNoSchoolLeft, months, schedule, selectedDay, todayISO }) {
+function CalendarMonthList({
+  currentDayHasNoSchoolLeft,
+  lastDayISO,
+  months,
+  onSelectDay,
+  schedule,
+  selectedDay,
+  todayISO,
+}) {
   return (
     <div className="calendar-month-list">
       {months.map((monthStart) => (
         <CalendarMonth
           key={getCalendarMonthKey(monthStart)}
           currentDayHasNoSchoolLeft={currentDayHasNoSchoolLeft}
+          lastDayISO={lastDayISO}
           monthStart={monthStart}
+          onSelectDay={onSelectDay}
           schedule={schedule}
           selectedDay={selectedDay}
           todayISO={todayISO}
@@ -657,7 +701,7 @@ function CalendarMonthList({ currentDayHasNoSchoolLeft, months, schedule, select
   );
 }
 
-function SchoolCalendar({ calendarWeekdayTop, focusRequestId, schedule, now, selectedDay }) {
+function SchoolCalendar({ calendarWeekdayTop, focusRequestId, lastDayISO, onSelectDay, schedule, now, selectedDay }) {
   const currentDayHasNoSchoolLeft = getRemainingSecondsToday(now, schedule) <= 0;
   const calendarFirstDay = useMemo(() => startOfPaddedCalendar(schedule.firstDay), [schedule.firstDay]);
   const calendarLastDay = useMemo(() => endOfPaddedCalendar(schedule.lastDay), [schedule.lastDay]);
@@ -679,7 +723,9 @@ function SchoolCalendar({ calendarWeekdayTop, focusRequestId, schedule, now, sel
       <div className="react-calendar-shell" aria-label="Calendar">
         <CalendarMonthList
           currentDayHasNoSchoolLeft={currentDayHasNoSchoolLeft}
+          lastDayISO={lastDayISO}
           months={calendarMonths}
+          onSelectDay={onSelectDay}
           schedule={schedule}
           selectedDay={selectedDay}
           todayISO={todayISO}
@@ -734,7 +780,7 @@ function App() {
   const todayCountdown = remainingSecondsToday > 0 ? `${formatDuration(remainingSecondsToday)} left today` : "No school left today";
   const todayISO = toISO(new Date(now.getFullYear(), now.getMonth(), now.getDate()));
   const [focusedDayOff, setFocusedDayOff] = useState(() => ({ date: todayISO, requestId: 0 }));
-  const lastDayISO = validSchedule ? toISO(schedule.lastDay) : "";
+  const lastDayISO = validSchedule ? toISO(getLastSchoolDay(schedule) || schedule.lastDay) : "";
   useEffect(() => {
     document.title = isSummerMode
       ? "School's Out for Summer"
@@ -752,7 +798,7 @@ function App() {
     if (isOneSchoolDayLeft) return;
     setCountdownUnit((current) => (current === "days" ? "weeks" : "days"));
   };
-  const calendarWeekdayTop = useMirroredTopGapCssVar(countdownHeaderRef, "--calendar-weekday-top");
+  const calendarWeekdayTop = useHeaderGapCssVar(countdownHeaderRef, "--calendar-weekday-top");
 
   if (isSummerMode) {
     return <SummerModePage />;
@@ -821,6 +867,8 @@ function App() {
             calendarWeekdayTop={calendarWeekdayTop}
             schedule={schedule}
             now={now}
+            lastDayISO={lastDayISO}
+            onSelectDay={focusDayOff}
             selectedDay={focusedDayOff.date}
           />
         ) : (

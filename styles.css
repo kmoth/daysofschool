@@ -14,6 +14,7 @@
   --calendar-row-height: 58px;
   --calendar-weekday-height: 48px;
   --calendar-weekday-top: 220px;
+  --calendar-header-gap: clamp(24px, 6vh, 54px);
   --calendar-weekday-bleed: 13px;
   --calendar-edge-fade: 118px;
   --calendar-blur-side-gap: 0px;
@@ -51,12 +52,19 @@
 
 html {
   min-height: 100%;
+  overflow-x: hidden;
   background: var(--paper);
+  overscroll-behavior-x: none;
+  touch-action: pan-y pinch-zoom;
 }
 
 body,
 #root {
   min-height: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+  overscroll-behavior-x: none;
+  touch-action: pan-y pinch-zoom;
 }
 
 body {
@@ -76,7 +84,12 @@ body {
   position: relative;
   min-height: 100vh;
   min-height: 100dvh;
+  max-width: 100vw;
+  overflow-x: hidden;
+  overflow-x: clip;
   background: var(--paper);
+  overscroll-behavior-x: none;
+  touch-action: pan-y pinch-zoom;
 }
 
 .countdown-header {
@@ -606,6 +619,10 @@ body::-webkit-scrollbar,
   position: relative;
 }
 
+.calendar-month-starts-on-week-start {
+  padding-top: var(--calendar-row-height);
+}
+
 .calendar-month-grid {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
@@ -633,6 +650,36 @@ body::-webkit-scrollbar,
   font-weight: 750;
   user-select: none;
   -webkit-user-select: none;
+}
+
+.react-calendar-shell :is(.Cal__Day__root, .Cal__Day-module__root).calendar-day-selectable {
+  cursor: pointer;
+}
+
+.react-calendar-shell :is(.Cal__Day__root, .Cal__Day-module__root).calendar-day-last-school-day {
+  z-index: 10;
+  isolation: isolate;
+}
+
+.react-calendar-shell .calendar-day-select-button {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 4px;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.react-calendar-shell .calendar-day-select-button:focus {
+  outline: none;
+}
+
+.react-calendar-shell .calendar-day-select-button:focus-visible {
+  outline: 3px solid var(--calendar-focused-day);
+  outline-offset: -5px;
 }
 
 .react-calendar-shell
@@ -792,23 +839,20 @@ body::-webkit-scrollbar,
 .react-calendar-shell :is(.Cal__Day__month, .Cal__Day-module__month) {
   position: absolute;
   top: -22px;
-  left: 8px;
+  left: 50%;
   z-index: 4;
   color: var(--calendar-ink);
   font-size: 1rem;
   font-weight: 850;
   line-height: 1;
   pointer-events: none;
-  text-align: left;
+  text-align: center;
+  transform: translateX(-50%);
 }
 
 .react-calendar-shell .calendar-month-label {
   -webkit-text-stroke: 3px #ffffff;
   paint-order: stroke fill;
-}
-
-.react-calendar-shell .calendar-month-starts-on-week-start .calendar-month-label {
-  top: 4px;
 }
 
 /* .react-calendar-shell .calendar-day-number { */
@@ -931,6 +975,7 @@ body::-webkit-scrollbar,
 @media (max-width: 560px) {
   :root {
     --calendar-edge-fade: 0px;
+    --calendar-header-gap: 18px;
     --calendar-blur-side-gap: 0px;
     --settings-panel-edge-gap: 10px;
     --settings-panel-safe-gap: 10px;

@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title">
+  <title id="title">School days calendar icon</title>
+  <rect width="512" height="512" rx="112" fill="#e5e7eb" />
+  <rect x="72" y="96" width="368" height="328" rx="44" fill="#ffffff" />
+  <path d="M116 96h280c24.3 0 44 19.7 44 44v52H72v-52c0-24.3 19.7-44 44-44Z" fill="#1f8f62" />
+  <rect x="134" y="60" width="34" height="86" rx="17" fill="#05070a" />
+  <rect x="344" y="60" width="34" height="86" rx="17" fill="#05070a" />
+  <g fill="#ededed">
+    <rect x="106" y="228" width="70" height="54" rx="10" />
+    <rect x="206" y="228" width="70" height="54" rx="10" />
+    <rect x="306" y="228" width="70" height="54" rx="10" />
+    <rect x="106" y="314" width="70" height="54" rx="10" />
+    <rect x="206" y="314" width="70" height="54" rx="10" />
+  </g>
+  <rect x="306" y="314" width="70" height="54" rx="10" fill="#ddf6e7" />
+  <path d="M324 341l20 19 44-50" fill="none" stroke="#1f8f62" stroke-width="24" stroke-linecap="round" stroke-linejoin="round" />
+</svg>

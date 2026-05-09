@@ -440,6 +440,8 @@ body::-webkit-scrollbar,
 
 .date-list .day-off-item-label {
   min-width: 0;
+  color: var(--ink);
+  -webkit-text-fill-color: var(--ink);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

@@ -180,6 +180,16 @@ body {
   animation: countdown-rainbow-fill 4s linear infinite;
 }
 
+.summer-countdown-shell .countdown-header {
+  width: min(780px, calc(100vw - var(--layout-left-edge) - 24px));
+}
+
+.summer-countdown-shell .countdown-header h1 {
+  max-width: 780px;
+  font-size: 4.6rem;
+  line-height: 1;
+}
+
 @keyframes countdown-rainbow-fill {
   to {
     background-position: var(--rainbow-fill-width) 0;
@@ -533,6 +543,39 @@ body::-webkit-scrollbar,
   background: #05070a;
   text-align: center;
   color: #ffffff;
+}
+
+.summer-mode-message {
+  max-width: min(100%, 960px);
+  letter-spacing: 0;
+}
+
+.summer-mode-emoji-button {
+  display: inline-grid;
+  place-items: center;
+  margin: 0;
+  padding: 0 0.04em;
+  color: inherit;
+  font: inherit;
+  line-height: 1;
+  vertical-align: baseline;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.summer-mode-emoji-button:focus-visible {
+  outline: 4px solid #ffffff;
+  outline-offset: 6px;
+}
+
+.summer-mode-emoji-button:hover {
+  transform: scale(1.05);
+}
+
+.summer-mode-emoji-button:active {
+  transform: scale(0.98);
 }
 
 .summer-video {
@@ -966,6 +1009,10 @@ body::-webkit-scrollbar,
     --settings-panel-safe-gap: 12px;
   }
 
+  .summer-countdown-shell .countdown-header h1 {
+    font-size: 3.7rem;
+  }
+
   .settings-panel {
     width: min(360px, calc(100vw - var(--layout-left-edge) - 20px));
     max-height: calc(100svh - 32px);
@@ -986,6 +1033,10 @@ body::-webkit-scrollbar,
     top: max(18px, calc(var(--safe-area-top) + 8px));
     left: 18px;
     width: calc(100vw - 36px);
+  }
+
+  .summer-countdown-shell .countdown-header h1 {
+    font-size: 2.9rem;
   }
 
   .settings-panel-frame {

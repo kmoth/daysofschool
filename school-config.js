@@ -3,6 +3,10 @@ export const SCHOOL_COUNTDOWN_CONFIG = {
     firstDay: "2025-09-02",
     lastDay: "2026-06-26",
   },
+  summerBreak: {
+    firstDay: "2026-06-27",
+    lastDay: "2026-09-01",
+  },
   schoolHours: {
     start: "09:00",
     end: "15:20",

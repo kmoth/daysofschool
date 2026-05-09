@@ -38,6 +38,8 @@ const CALENDAR_END_PADDING_MONTHS = 2;
 const CALENDAR_WEEK_STARTS_ON = 0;
 const SUMMER_VIDEO_EMBED_SRC = "https://www.youtube.com/embed/mBqiC5ox8Bw";
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
+const SECONDS_PER_DAY = 24 * 60 * 60;
+const SUMMER_CALENDAR_WEEKDAYS = [0, 1, 2, 3, 4, 5, 6];
 const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const monthLabelFormatter = new Intl.DateTimeFormat(undefined, { month: "short" });
 const CONFETTI_DURATION_START_SECONDS = 1.3;
@@ -243,6 +245,72 @@ function hasExceededSchoolYear(now, schedule) {
   return now >= getSchoolYearEndDate(schedule);
 }
 
+function normalizeDateRange(rawRange) {
+  return {
+    firstDay: parseISO(rawRange?.firstDay),
+    lastDay: parseISO(rawRange?.lastDay),
+  };
+}
+
+function isValidDateRange(range) {
+  return Boolean(range.firstDay && range.lastDay && range.firstDay <= range.lastDay);
+}
+
+function getSummerCalendarSchedule(range) {
+  if (!isValidDateRange(range)) return normalizeSchedule({});
+
+  return normalizeSchedule({
+    schoolYear: {
+      firstDay: toISO(range.firstDay),
+      lastDay: toISO(range.lastDay),
+    },
+    schoolHours: {
+      start: "00:00",
+      end: "23:59",
+    },
+    schoolWeekdays: SUMMER_CALENDAR_WEEKDAYS,
+    daysOff: [],
+  });
+}
+
+function getStartOfDate(date) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+function getSummerCountdownTarget(range) {
+  return addDays(getStartOfDate(range.lastDay), 1);
+}
+
+function getRemainingSecondsDateRange(now, range) {
+  if (!isValidDateRange(range)) return 0;
+
+  return Math.max(0, Math.floor((getSummerCountdownTarget(range) - now) / 1000));
+}
+
+function getRemainingCalendarDays(now, range) {
+  return Math.ceil(getRemainingSecondsDateRange(now, range) / SECONDS_PER_DAY);
+}
+
+function formatCountdownDuration(totalSeconds) {
+  if (totalSeconds <= 0) return "School is back";
+
+  let remainder = totalSeconds;
+  const days = Math.floor(remainder / SECONDS_PER_DAY);
+  remainder %= SECONDS_PER_DAY;
+  const hours = Math.floor(remainder / 3600);
+  remainder %= 3600;
+  const minutes = Math.floor(remainder / 60);
+  const seconds = remainder % 60;
+  const parts = [
+    days ? `${days}d` : null,
+    hours ? `${hours}h` : null,
+    minutes ? `${minutes}m` : null,
+    seconds ? `${seconds}s` : null,
+  ].filter(Boolean);
+
+  return parts.length ? parts.join(" ") : "School is back";
+}
+
 function getLastSchoolDayTestNow(schedule, clock) {
   const schoolDay = getLastSchoolDay(schedule);
   if (!schoolDay) return null;
@@ -337,7 +405,7 @@ function useDocumentCalendarFocus(focusRequestId, focusDay, layoutKey) {
   }, [focusDay, focusRequestId, layoutKey]);
 }
 
-function useHeaderGapCssVar(ref, propertyName) {
+function useHeaderGapCssVar(ref, propertyName, layoutKey) {
   const [position, setPosition] = useState(null);
 
   useLayoutEffect(() => {
@@ -381,7 +449,7 @@ function useHeaderGapCssVar(ref, propertyName) {
       observer?.disconnect();
       document.documentElement.style.removeProperty(propertyName);
     };
-  }, [propertyName, ref]);
+  }, [layoutKey, propertyName, ref]);
 
   return position;
 }
@@ -433,7 +501,7 @@ function DayFocusShortcuts({ lastDayISO, onSelectDay, selectedDay, todayISO }) {
   );
 }
 
-function DaysOffList({ items, now, onSelectDay, selectedDay }) {
+function DaysOffList({ emptyMessage = "None left. But summer is real close!", items, now, onSelectDay, selectedDay }) {
   const futureItems = useMemo(() => futureDatedItems(items, now), [items, now]);
   const listRef = useRef(null);
   const [scrollState, setScrollState] = useState({ hasOverflow: false, isScrolled: false });
@@ -479,7 +547,7 @@ function DaysOffList({ items, now, onSelectDay, selectedDay }) {
   if (!futureItems.length) {
     return (
       <ul ref={listRef} className={listClassName} onScroll={handleScroll}>
-        <li className="date-list-empty">None left. But summer is real close!</li>
+        <li className="date-list-empty">{emptyMessage}</li>
       </ul>
     );
   }
@@ -756,10 +824,20 @@ function SchoolCalendar({ calendarWeekdayTop, focusRequestId, lastDayISO, onSele
   );
 }
 
-function SummerModePage() {
+function SummerModePage({ onRevealCountdown }) {
   return (
     <main className="summer-mode" aria-label="School is out for summer">
-      it is now summer 🎉
+      <div className="summer-mode-message">
+        it is now summer{" "}
+        <button
+          type="button"
+          className="summer-mode-emoji-button"
+          aria-label="Open parents countdown"
+          onClick={onRevealCountdown}
+        >
+          🎉
+        </button>
+      </div>
       {/* <iframe
         className="summer-video"
         src={SUMMER_VIDEO_EMBED_SRC}
@@ -777,38 +855,68 @@ function App() {
   const realNow = useNow();
   const countdownHeaderRef = useRef(null);
   const [countdownUnit, setCountdownUnit] = useState("days");
-  const schedule = useMemo(() => normalizeSchedule(SCHOOL_COUNTDOWN_CONFIG), []);
-  const validSchedule = isValidSchedule(schedule);
+  const [showParentsCountdown, setShowParentsCountdown] = useState(false);
+  const schoolSchedule = useMemo(() => normalizeSchedule(SCHOOL_COUNTDOWN_CONFIG), []);
+  const validSchoolSchedule = isValidSchedule(schoolSchedule);
+  const summerDateRange = useMemo(() => normalizeDateRange(SCHOOL_COUNTDOWN_CONFIG.summerBreak), []);
+  const summerSchedule = useMemo(() => getSummerCalendarSchedule(summerDateRange), [summerDateRange]);
+  const validSummerSchedule = isValidSchedule(summerSchedule);
   const now = useMemo(() => {
-    if (!validSchedule) return realNow;
-    return getTestNowFromQuery(schedule, realNow) || realNow;
-  }, [realNow, schedule, validSchedule]);
-  const isSummerMode = validSchedule && hasExceededSchoolYear(now, schedule);
-  const remainingSecondsYear = validSchedule ? getRemainingSecondsYear(now, schedule) : 0;
-  const remainingSecondsToday = validSchedule ? getRemainingSecondsToday(now, schedule) : 0;
-  const remainingSchoolDays = validSchedule ? Math.ceil(remainingSecondsYear / schedule.dayLengthSeconds) : 0;
-  const remainingSchoolWeeks = validSchedule
+    if (!validSchoolSchedule) return realNow;
+    return getTestNowFromQuery(schoolSchedule, realNow) || realNow;
+  }, [realNow, schoolSchedule, validSchoolSchedule]);
+  const isSummerMode = validSchoolSchedule && hasExceededSchoolYear(now, schoolSchedule);
+  const isParentsSummerCountdown = isSummerMode && showParentsCountdown && validSummerSchedule;
+  const schedule = isParentsSummerCountdown ? summerSchedule : schoolSchedule;
+  const validSchedule = isParentsSummerCountdown ? validSummerSchedule : validSchoolSchedule;
+  const remainingSecondsYear = validSchedule
+    ? isParentsSummerCountdown
+      ? getRemainingSecondsDateRange(now, summerDateRange)
+      : getRemainingSecondsYear(now, schedule)
+    : 0;
+  const remainingSecondsToday = validSchedule && !isParentsSummerCountdown ? getRemainingSecondsToday(now, schedule) : 0;
+  const remainingSummerDays = isParentsSummerCountdown ? getRemainingCalendarDays(now, summerDateRange) : 0;
+  const remainingSchoolDays = validSchedule && !isParentsSummerCountdown
+    ? Math.ceil(remainingSecondsYear / schedule.dayLengthSeconds)
+    : 0;
+  const remainingSchoolWeeks = validSchedule && !isParentsSummerCountdown
     ? Math.ceil(remainingSchoolDays / Math.max(1, schedule.weekdays.size))
     : 0;
-  const isOneSchoolDayLeft = remainingSchoolDays === 1;
-  const showWeeks = countdownUnit === "weeks" && !isOneSchoolDayLeft;
+  const isOneSchoolDayLeft = !isParentsSummerCountdown && remainingSchoolDays === 1;
+  const showWeeks = !isParentsSummerCountdown && countdownUnit === "weeks" && !isOneSchoolDayLeft;
   const headlineText =
-    isOneSchoolDayLeft
+    isParentsSummerCountdown
+      ? remainingSummerDays > 0
+        ? `${remainingSummerDays} ${remainingSummerDays === 1 ? "day" : "days"} until school is back`
+        : "School is back in session"
+      : isOneSchoolDayLeft
       ? "LAST DAY OF SCHOOL OMG!1!!"
       : showWeeks
         ? `${remainingSchoolWeeks} ${remainingSchoolWeeks === 1 ? "week" : "weeks"} of school left`
         : `${remainingSchoolDays} ${remainingSchoolDays === 1 ? "day" : "days"} of school left`;
-  const todayCountdown = remainingSecondsToday > 0 ? `${formatDuration(remainingSecondsToday)} left today` : "No school left today";
+  const todayCountdown = isParentsSummerCountdown
+    ? remainingSecondsYear > 0
+      ? `${formatCountdownDuration(remainingSecondsYear)} left`
+      : "School is back in session"
+    : remainingSecondsToday > 0
+      ? `${formatDuration(remainingSecondsToday)} left today`
+      : "No school left today";
   const todayISO = toISO(new Date(now.getFullYear(), now.getMonth(), now.getDate()));
   const [focusedDayOff, setFocusedDayOff] = useState(() => ({ date: todayISO, requestId: 0 }));
   const lastDayISO = validSchedule ? toISO(getLastSchoolDay(schedule) || schedule.lastDay) : "";
+  const canToggleCountdownUnit = !isParentsSummerCountdown && !isOneSchoolDayLeft;
+  const countdownTitleLabel = isParentsSummerCountdown
+    ? headlineText
+    : isOneSchoolDayLeft
+      ? headlineText
+      : `${headlineText}. Show ${showWeeks ? "days" : "weeks"} of school left`;
   useEffect(() => {
-    document.title = isSummerMode
+    document.title = isSummerMode && !isParentsSummerCountdown
       ? "School's Out for Summer"
       : validSchedule
       ? headlineText
       : "School Days Left";
-  }, [headlineText, isSummerMode, validSchedule]);
+  }, [headlineText, isParentsSummerCountdown, isSummerMode, validSchedule]);
   const focusDayOff = (date) => {
     setFocusedDayOff((current) => ({
       date,
@@ -816,17 +924,21 @@ function App() {
     }));
   };
   const toggleCountdownUnit = () => {
-    if (isOneSchoolDayLeft) return;
+    if (!canToggleCountdownUnit) return;
     setCountdownUnit((current) => (current === "days" ? "weeks" : "days"));
   };
-  const calendarWeekdayTop = useHeaderGapCssVar(countdownHeaderRef, "--calendar-weekday-top");
+  const calendarWeekdayTop = useHeaderGapCssVar(
+    countdownHeaderRef,
+    "--calendar-weekday-top",
+    isParentsSummerCountdown,
+  );
 
-  if (isSummerMode) {
-    return <SummerModePage />;
+  if (isSummerMode && !isParentsSummerCountdown) {
+    return <SummerModePage onRevealCountdown={() => setShowParentsCountdown(true)} />;
   }
 
   return (
-    <main className="app-shell">
+    <main className={classNames("app-shell", isParentsSummerCountdown && "summer-countdown-shell")}>
       {validSchedule && <div className="calendar-top-blur" aria-hidden="true" />}
 
       <header className="countdown-header" ref={countdownHeaderRef} aria-labelledby="app-title">
@@ -837,12 +949,8 @@ function App() {
               "countdown-title-toggle",
               isOneSchoolDayLeft && !showWeeks && "countdown-title-final-day",
             )}
-            aria-label={
-              isOneSchoolDayLeft
-                ? headlineText
-                : `${headlineText}. Show ${showWeeks ? "days" : "weeks"} of school left`
-            }
-            disabled={isOneSchoolDayLeft}
+            aria-label={countdownTitleLabel}
+            disabled={!canToggleCountdownUnit}
             onClick={toggleCountdownUnit}
           >
             {isOneSchoolDayLeft && !showWeeks ? (
@@ -867,7 +975,7 @@ function App() {
       <div className="settings-panel-frame">
         <aside className="settings-panel">
           <div className="settings-panel-heading">
-            <h2>Highlights</h2>
+            <h2>{isParentsSummerCountdown ? "Summer" : "Highlights"}</h2>
             {validSchedule && (
               <DayFocusShortcuts
                 lastDayISO={lastDayISO}
@@ -877,7 +985,13 @@ function App() {
               />
             )}
           </div>
-          <DaysOffList items={schedule.daysOff} now={now} onSelectDay={focusDayOff} selectedDay={focusedDayOff.date} />
+          <DaysOffList
+            emptyMessage={isParentsSummerCountdown ? "Back to school is the next marker." : undefined}
+            items={schedule.daysOff}
+            now={now}
+            onSelectDay={focusDayOff}
+            selectedDay={focusedDayOff.date}
+          />
         </aside>
       </div>
 

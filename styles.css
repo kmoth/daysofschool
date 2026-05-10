@@ -527,7 +527,6 @@ body::-webkit-scrollbar,
   height: var(--calendar-weekday-top);
   overflow: hidden;
   pointer-events: none;
-  background: rgba(255, 255, 255, 0.08);
   -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
 }

@@ -53,15 +53,25 @@ const FOCUS_SOURCE_LIST = "list";
 const FOCUS_SOURCE_SHORTCUT = "shortcut";
 const WEEKEND_CONFETTI_PARTICLES = [
   ["#1f8f62", 10, 0.1, 3.6, 0.2, 18],
+  ["#d7fae2", 14, 0.38, 3.5, 0.72, -16],
   ["#6bdc8a", 18, 0.62, 3.9, 0.38, -24],
+  ["#2fb978", 23, 0.04, 4.2, 0.16, 24],
   ["#42b883", 28, 0.46, 4.4, 0.68, -14],
+  ["#9be7af", 32, 0.76, 3.3, 0.46, 30],
   ["#b9f5ca", 36, 0.82, 3.4, 0.54, 20],
+  ["#1f8f62", 41, 0.26, 3.8, 0.84, -28],
   ["#8bdc9d", 46, 0.24, 3.2, 0.42, 26],
+  ["#c8f7d7", 50, 0.94, 4.1, 0.24, 14],
   ["#1f8f62", 55, 0.58, 4.0, 0.78, -18],
+  ["#6bdc8a", 59, 0.14, 3.6, 0.62, 22],
   ["#2fb978", 64, 0.72, 4.1, 0.88, -22],
+  ["#b9f5ca", 68, 0.52, 3.4, 0.34, -12],
   ["#9be7af", 72, 0.18, 3.7, 0.32, 16],
+  ["#42b883", 77, 0.86, 4.3, 0.7, 28],
   ["#c8f7d7", 82, 0.34, 3.8, 0.12, 12],
+  ["#8bdc9d", 86, 0.66, 3.5, 0.48, -20],
   ["#4fcf83", 90, 0.9, 4.3, 0.58, -28],
+  ["#d7fae2", 94, 0.28, 3.9, 0.9, 18],
 ];
 const CONFETTI_PARTICLES = [
   ["#e63946", -136, -76, -34, 258, 220, 0, "8px"],
@@ -1127,14 +1137,18 @@ function App() {
             {remainingSchoolDays === 1 ? "day" : "days"} of school left
           </>
         );
+  const todayDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const todayISO = toISO(todayDate);
+  const hasSchoolToday = validSchedule && !isParentsSummerCountdown && isSchoolDay(todayDate, schedule);
   const todayCountdown = isParentsSummerCountdown
     ? remainingSecondsYear > 0
       ? `${formatCountdownDuration(remainingSecondsYear)} left`
       : "School is back in session"
     : remainingSecondsToday > 0
       ? `${formatDuration(remainingSecondsToday)} left today`
-      : "No school left today";
-  const todayISO = toISO(new Date(now.getFullYear(), now.getMonth(), now.getDate()));
+      : hasSchoolToday
+        ? "No school left today"
+        : "No school today";
   const [focusedDayOff, setFocusedDayOff] = useState(() => ({
     date: todayISO,
     requestId: 0,

@@ -1,4 +1,4 @@
-import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import "../styles.css";
 import { SCHOOL_COUNTDOWN_CONFIG } from "../school-config.js";
@@ -45,6 +45,24 @@ const monthLabelFormatter = new Intl.DateTimeFormat(undefined, { month: "short" 
 const CONFETTI_DURATION_START_SECONDS = 1.3;
 const CONFETTI_DURATION_RANGE_SECONDS = 0.4;
 const CONFETTI_DURATION_RANDOM_SEED = 31;
+const ATTENTION_PULSE_MS = 460;
+const SCROLL_SETTLE_MS = 90;
+const SCROLL_SETTLE_MAX_MS = 1800;
+const FOCUS_SOURCE_CALENDAR = "calendar";
+const FOCUS_SOURCE_LIST = "list";
+const FOCUS_SOURCE_SHORTCUT = "shortcut";
+const WEEKEND_CONFETTI_PARTICLES = [
+  ["#1f8f62", 10, 0.1, 3.6, 0.2, 18],
+  ["#6bdc8a", 18, 0.62, 3.9, 0.38, -24],
+  ["#42b883", 28, 0.46, 4.4, 0.68, -14],
+  ["#b9f5ca", 36, 0.82, 3.4, 0.54, 20],
+  ["#8bdc9d", 46, 0.24, 3.2, 0.42, 26],
+  ["#1f8f62", 55, 0.58, 4.0, 0.78, -18],
+  ["#2fb978", 64, 0.72, 4.1, 0.88, -22],
+  ["#9be7af", 72, 0.18, 3.7, 0.32, 16],
+  ["#c8f7d7", 82, 0.34, 3.8, 0.12, 12],
+  ["#4fcf83", 90, 0.9, 4.3, 0.58, -28],
+];
 const CONFETTI_PARTICLES = [
   ["#e63946", -136, -76, -34, 258, 220, 0, "8px"],
   ["#f4a261", -102, -114, 28, 318, -180, -0.34, "7px"],
@@ -174,6 +192,27 @@ function ConfettiBurst({ className }) {
           />
         );
       })}
+    </span>
+  );
+}
+
+function WeekendConfetti() {
+  return (
+    <span className="calendar-weekend-confetti" aria-hidden="true">
+      {WEEKEND_CONFETTI_PARTICLES.map(([color, left, delay, duration, drift, rotate], index) => (
+        <span
+          key={`${color}-${index}`}
+          className="calendar-weekend-confetti-piece"
+          style={{
+            "--weekend-confetti-color": color,
+            "--weekend-confetti-left": `${left}%`,
+            "--weekend-confetti-delay": `${delay * -duration * 0.5}s`,
+            "--weekend-confetti-duration": `${duration * 0.5}s`,
+            "--weekend-confetti-drift": `${(drift - 0.5) * 18}px`,
+            "--weekend-confetti-rotate": `${rotate}deg`,
+          }}
+        />
+      ))}
     </span>
   );
 }
@@ -375,7 +414,107 @@ function getDocumentFocusBand() {
   return { height: bottom - top, top };
 }
 
-function useDocumentCalendarFocus(focusRequestId, focusDay, layoutKey) {
+function prefersReducedMotion() {
+  return window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+}
+
+function getScrollTop(scrollTarget) {
+  return scrollTarget === window ? window.scrollY || window.pageYOffset || 0 : scrollTarget.scrollTop;
+}
+
+function getMaxScrollTop(scrollTarget) {
+  if (scrollTarget === window) {
+    const documentElement = document.documentElement;
+    const viewportHeight = window.visualViewport?.height || window.innerHeight || documentElement.clientHeight;
+    return Math.max(0, documentElement.scrollHeight - viewportHeight);
+  }
+
+  return Math.max(0, scrollTarget.scrollHeight - scrollTarget.clientHeight);
+}
+
+function clampScrollTop(scrollTarget, targetTop) {
+  return Math.max(0, Math.min(Math.round(targetTop), getMaxScrollTop(scrollTarget)));
+}
+
+function scrollTargetTo(scrollTarget, targetTop, behavior) {
+  if (scrollTarget === window) {
+    window.scrollTo({ top: targetTop, behavior });
+    return;
+  }
+
+  scrollTarget.scrollTo({ top: targetTop, behavior });
+}
+
+function waitForScrollTop(scrollTarget, targetTop, onSettled) {
+  let isCancelled = false;
+  let frame = 0;
+  let settleTimer = 0;
+  let maxTimer = 0;
+
+  const clearTimers = () => {
+    window.cancelAnimationFrame(frame);
+    window.clearTimeout(settleTimer);
+    window.clearTimeout(maxTimer);
+  };
+
+  const finish = () => {
+    if (isCancelled) return;
+    isCancelled = true;
+    clearTimers();
+    onSettled();
+  };
+
+  const tick = () => {
+    if (isCancelled) return;
+
+    const distance = Math.abs(getScrollTop(scrollTarget) - targetTop);
+    if (distance <= 1) {
+      window.clearTimeout(settleTimer);
+      settleTimer = window.setTimeout(finish, SCROLL_SETTLE_MS);
+      return;
+    }
+
+    frame = window.requestAnimationFrame(tick);
+  };
+
+  frame = window.requestAnimationFrame(tick);
+  maxTimer = window.setTimeout(finish, SCROLL_SETTLE_MAX_MS);
+
+  return () => {
+    isCancelled = true;
+    clearTimers();
+  };
+}
+
+function useAttentionPulse() {
+  const [attentionDay, setAttentionDay] = useState("");
+  const animationFrameRef = useRef(0);
+  const animationTimerRef = useRef(0);
+
+  const triggerAttentionPulse = useCallback((date) => {
+    if (!date || prefersReducedMotion()) return;
+
+    window.cancelAnimationFrame(animationFrameRef.current);
+    window.clearTimeout(animationTimerRef.current);
+    setAttentionDay("");
+
+    animationFrameRef.current = window.requestAnimationFrame(() => {
+      setAttentionDay(date);
+      animationTimerRef.current = window.setTimeout(() => setAttentionDay(""), ATTENTION_PULSE_MS);
+    });
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      window.cancelAnimationFrame(animationFrameRef.current);
+      window.clearTimeout(animationTimerRef.current);
+    };
+  }, []);
+
+  return [attentionDay, triggerAttentionPulse];
+}
+
+function useDocumentCalendarFocus(focusRequestId, focusDay, layoutKey, onFocusSettled) {
   const lastFocusKeyRef = useRef("");
 
   useLayoutEffect(() => {
@@ -385,6 +524,7 @@ function useDocumentCalendarFocus(focusRequestId, focusDay, layoutKey) {
     if (lastFocusKeyRef.current === focusKey) return;
     lastFocusKeyRef.current = focusKey;
 
+    let cancelScrollWait = null;
     const frame = window.requestAnimationFrame(() => {
       const element = document.querySelector(`[data-date="${focusDay}"]`);
       if (!element) return;
@@ -393,16 +533,20 @@ function useDocumentCalendarFocus(focusRequestId, focusDay, layoutKey) {
       const focusBand = getDocumentFocusBand();
       const targetOffset =
         window.scrollY + rect.top - focusBand.top - Math.max(0, (focusBand.height - rect.height) / 2);
-      const prefersReducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+      const targetTop = clampScrollTop(window, targetOffset);
+      const behavior = focusRequestId && !prefersReducedMotion() ? "smooth" : "auto";
 
-      window.scrollTo({
-        top: Math.max(0, Math.round(targetOffset)),
-        behavior: focusRequestId && !prefersReducedMotion ? "smooth" : "auto",
+      scrollTargetTo(window, targetTop, behavior);
+      cancelScrollWait = waitForScrollTop(window, targetTop, () => {
+        onFocusSettled?.(focusDay, focusRequestId);
       });
     });
 
-    return () => window.cancelAnimationFrame(frame);
-  }, [focusDay, focusRequestId, layoutKey]);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      cancelScrollWait?.();
+    };
+  }, [focusDay, focusRequestId, layoutKey, onFocusSettled]);
 }
 
 function useHeaderGapCssVar(ref, propertyName, layoutKey) {
@@ -481,7 +625,7 @@ function DayFocusShortcuts({ lastDayISO, onSelectDay, selectedDay, todayISO }) {
           selectedDay === todayISO && "day-focus-shortcut-selected",
         )}
         aria-pressed={selectedDay === todayISO}
-        onClick={() => onSelectDay(todayISO)}
+        onClick={() => onSelectDay(todayISO, FOCUS_SOURCE_SHORTCUT)}
       >
         Today
       </button>
@@ -493,7 +637,7 @@ function DayFocusShortcuts({ lastDayISO, onSelectDay, selectedDay, todayISO }) {
           selectedDay === lastDayISO && "day-focus-shortcut-selected",
         )}
         aria-pressed={selectedDay === lastDayISO}
-        onClick={() => onSelectDay(lastDayISO)}
+        onClick={() => onSelectDay(lastDayISO, FOCUS_SOURCE_SHORTCUT)}
       >
         Last day
       </button>
@@ -501,9 +645,18 @@ function DayFocusShortcuts({ lastDayISO, onSelectDay, selectedDay, todayISO }) {
   );
 }
 
-function DaysOffList({ emptyMessage = "None left. But summer is real close!", items, now, onSelectDay, selectedDay }) {
+function DaysOffList({
+  emptyMessage = "None left. But summer is real close!",
+  focusRequestId,
+  focusSource,
+  items,
+  now,
+  onSelectDay,
+  selectedDay,
+}) {
   const futureItems = useMemo(() => futureDatedItems(items, now), [items, now]);
   const listRef = useRef(null);
+  const [attentionDay, triggerAttentionPulse] = useAttentionPulse();
   const [scrollState, setScrollState] = useState({ hasOverflow: false, isScrolled: false });
 
   const updateScrollState = (element) => {
@@ -538,6 +691,29 @@ function DaysOffList({ emptyMessage = "None left. But summer is real close!", it
     return () => observer.disconnect();
   }, [futureItems.length]);
 
+  useLayoutEffect(() => {
+    if (!selectedDay || focusSource !== FOCUS_SOURCE_CALENDAR) return undefined;
+
+    const element = listRef.current;
+    const target = element?.querySelector(`[data-day-off-date="${selectedDay}"]`);
+    if (!element || !target) return undefined;
+
+    const elementRect = element.getBoundingClientRect();
+    const targetRect = target.getBoundingClientRect();
+    const targetOffset =
+      element.scrollTop + targetRect.top - elementRect.top - Math.max(0, (element.clientHeight - targetRect.height) / 2);
+    const targetTop = clampScrollTop(element, targetOffset);
+    const behavior = focusRequestId && !prefersReducedMotion() ? "smooth" : "auto";
+
+    scrollTargetTo(element, targetTop, behavior);
+    updateScrollState(element);
+
+    return waitForScrollTop(element, targetTop, () => {
+      updateScrollState(element);
+      triggerAttentionPulse(selectedDay);
+    });
+  }, [focusRequestId, focusSource, futureItems.length, selectedDay, triggerAttentionPulse]);
+
   const listClassName = classNames(
     "date-list",
     scrollState.hasOverflow && "date-list-scrollable",
@@ -563,9 +739,11 @@ function DaysOffList({ emptyMessage = "None left. But summer is real close!", it
               "day-off-button",
               getDayOffClass(item),
               item.date === selectedDay && "day-off-item-selected",
+              item.date === attentionDay && "day-off-item-attention",
             )}
+            data-day-off-date={item.date}
             aria-pressed={item.date === selectedDay}
-            onClick={() => onSelectDay(item.date)}
+            onClick={() => onSelectDay(item.date, FOCUS_SOURCE_LIST)}
           >
             <span className="day-off-item-label">{formatDayOff(item)}</span>
             <span className="day-off-item-count">({getDaysUntilDayOff(item.date, now)}d)</span>
@@ -607,6 +785,7 @@ function endOfPaddedCalendar(date) {
 }
 
 function CalendarDay({
+  attentionDay,
   currentDayHasNoSchoolLeft,
   date,
   lastDayISO,
@@ -620,11 +799,13 @@ function CalendarDay({
   const dayTypeClass = getCalendarDayTypeClass(date, schedule);
   const isCurrentDay = date === todayISO;
   const isSelectedDay = date === selectedDay;
+  const isAttentionDay = date === attentionDay;
   const isDayOff = schedule.allDaysOff.has(date);
+  const isWeekend = parsedDate ? parsedDate.getDay() === 0 || parsedDate.getDay() === 6 : false;
+  const isCurrentWeekend = isCurrentDay && isWeekend;
   const isSchoolDate = Boolean(parsedDate && isSchoolDay(parsedDate, schedule));
   const isDisabled = !isSchoolDate && !isDayOff;
-  const shouldUsePassedMark = isSchoolDate || isDayOff;
-  const isPastMarkedDay = shouldUsePassedMark && (date < todayISO || (isCurrentDay && currentDayHasNoSchoolLeft));
+  const isPastMarkedDay = isSchoolDate && (date < todayISO || (isCurrentDay && currentDayHasNoSchoolLeft));
   const isLastSchoolDay = date === lastDayISO;
   const isSelectable = isDayOff || isLastSchoolDay;
   const isCurrentLastSchoolDay = isCurrentDay && isLastSchoolDay;
@@ -646,12 +827,15 @@ function CalendarDay({
         isDisabled ? "Cal__Day-module__disabled" : "Cal__Day-module__enabled",
         isSelectable && "calendar-day-selectable",
         isLastSchoolDay && "calendar-day-last-school-day",
+        isAttentionDay && "calendar-day-attention",
+        isCurrentWeekend && "calendar-day-current-weekend",
       )}
       aria-current={isCurrentDay ? "date" : undefined}
       aria-label={date}
       data-date={date}
     >
       <span className="calendar-month-fill" aria-hidden="true" />
+      {isCurrentWeekend && <WeekendConfetti />}
       {isCurrentLastSchoolDay && <span className="calendar-last-day-sunburst" aria-hidden="true" />}
       {dayTypeClass && (
         <span
@@ -664,12 +848,13 @@ function CalendarDay({
           aria-hidden="true"
         />
       )}
-      {isSelectedDay && (
+      {(isSelectedDay || isCurrentWeekend) && (
         <span
           className={classNames(
             "calendar-day-outline",
             selectedOutlineClass,
             isCurrentLastSchoolDay && "calendar-last-day-pulse",
+            isCurrentWeekend && "calendar-day-outline-current-weekend",
           )}
           aria-hidden="true"
         />
@@ -695,6 +880,7 @@ function CalendarDay({
           "calendar-day-number",
           isCurrentDay && "calendar-day-number-current",
           isCurrentLastSchoolDay && "calendar-last-day-pulse",
+          isCurrentWeekend && "calendar-day-number-current-weekend",
         )}
       >
         {day}
@@ -705,7 +891,7 @@ function CalendarDay({
           className="calendar-day-select-button"
           aria-label={`Select ${date}`}
           aria-pressed={isSelectedDay}
-          onClick={() => onSelectDay(date)}
+          onClick={() => onSelectDay(date, FOCUS_SOURCE_CALENDAR)}
         />
       )}
     </li>
@@ -723,6 +909,7 @@ function CalendarWeekdays() {
 }
 
 function CalendarMonth({
+  attentionDay,
   currentDayHasNoSchoolLeft,
   lastDayISO,
   monthStart,
@@ -748,6 +935,7 @@ function CalendarMonth({
           return (
             <CalendarDay
               key={iso}
+              attentionDay={attentionDay}
               currentDayHasNoSchoolLeft={currentDayHasNoSchoolLeft}
               date={iso}
               lastDayISO={lastDayISO}
@@ -764,6 +952,7 @@ function CalendarMonth({
 }
 
 function CalendarMonthList({
+  attentionDay,
   currentDayHasNoSchoolLeft,
   lastDayISO,
   months,
@@ -777,6 +966,7 @@ function CalendarMonthList({
       {months.map((monthStart) => (
         <CalendarMonth
           key={getCalendarMonthKey(monthStart)}
+          attentionDay={attentionDay}
           currentDayHasNoSchoolLeft={currentDayHasNoSchoolLeft}
           lastDayISO={lastDayISO}
           monthStart={monthStart}
@@ -790,8 +980,18 @@ function CalendarMonthList({
   );
 }
 
-function SchoolCalendar({ calendarWeekdayTop, focusRequestId, lastDayISO, onSelectDay, schedule, now, selectedDay }) {
+function SchoolCalendar({
+  calendarWeekdayTop,
+  focusRequestId,
+  focusSource,
+  lastDayISO,
+  onSelectDay,
+  schedule,
+  now,
+  selectedDay,
+}) {
   const currentDayHasNoSchoolLeft = getRemainingSecondsToday(now, schedule) <= 0;
+  const [attentionDay, triggerAttentionPulse] = useAttentionPulse();
   const calendarFirstDay = useMemo(() => startOfPaddedCalendar(schedule.firstDay), [schedule.firstDay]);
   const calendarLastDay = useMemo(() => endOfPaddedCalendar(schedule.lastDay), [schedule.lastDay]);
   const calendarMonths = useMemo(
@@ -804,13 +1004,21 @@ function SchoolCalendar({ calendarWeekdayTop, focusRequestId, lastDayISO, onSele
   const calendarToday = useMemo(() => new Date(calendarYear, calendarMonth, calendarDate), [calendarYear, calendarMonth, calendarDate]);
   const todayISO = useMemo(() => toISO(calendarToday), [calendarToday]);
   const focusedDayISO = selectedDay || todayISO;
-  useDocumentCalendarFocus(focusRequestId, focusedDayISO, calendarWeekdayTop);
+  const handleCalendarFocusSettled = useCallback(
+    (date) => {
+      if (focusSource !== FOCUS_SOURCE_LIST) return;
+      triggerAttentionPulse(date);
+    },
+    [focusSource, triggerAttentionPulse],
+  );
+  useDocumentCalendarFocus(focusRequestId, focusedDayISO, calendarWeekdayTop, handleCalendarFocusSettled);
 
   return (
     <>
       <CalendarWeekdays />
       <div className="react-calendar-shell" aria-label="Calendar">
         <CalendarMonthList
+          attentionDay={attentionDay}
           currentDayHasNoSchoolLeft={currentDayHasNoSchoolLeft}
           lastDayISO={lastDayISO}
           months={calendarMonths}
@@ -894,6 +1102,31 @@ function App() {
       : showWeeks
         ? `${remainingSchoolWeeks} ${remainingSchoolWeeks === 1 ? "week" : "weeks"} of school left`
         : `${remainingSchoolDays} ${remainingSchoolDays === 1 ? "day" : "days"} of school left`;
+  const headlineContent =
+    isParentsSummerCountdown
+      ? remainingSummerDays > 0
+        ? (
+          <>
+            <span className="countdown-title-count">{remainingSummerDays}</span>{" "}
+            {remainingSummerDays === 1 ? "day" : "days"} until school is back
+          </>
+        )
+        : "School is back in session"
+      : isOneSchoolDayLeft
+      ? headlineText
+      : showWeeks
+        ? (
+          <>
+            <span className="countdown-title-count">{remainingSchoolWeeks}</span>{" "}
+            {remainingSchoolWeeks === 1 ? "week" : "weeks"} of school left
+          </>
+        )
+        : (
+          <>
+            <span className="countdown-title-count">{remainingSchoolDays}</span>{" "}
+            {remainingSchoolDays === 1 ? "day" : "days"} of school left
+          </>
+        );
   const todayCountdown = isParentsSummerCountdown
     ? remainingSecondsYear > 0
       ? `${formatCountdownDuration(remainingSecondsYear)} left`
@@ -902,7 +1135,11 @@ function App() {
       ? `${formatDuration(remainingSecondsToday)} left today`
       : "No school left today";
   const todayISO = toISO(new Date(now.getFullYear(), now.getMonth(), now.getDate()));
-  const [focusedDayOff, setFocusedDayOff] = useState(() => ({ date: todayISO, requestId: 0 }));
+  const [focusedDayOff, setFocusedDayOff] = useState(() => ({
+    date: todayISO,
+    requestId: 0,
+    source: FOCUS_SOURCE_SHORTCUT,
+  }));
   const lastDayISO = validSchedule ? toISO(getLastSchoolDay(schedule) || schedule.lastDay) : "";
   const canToggleCountdownUnit = !isParentsSummerCountdown && !isOneSchoolDayLeft;
   const countdownTitleLabel = isParentsSummerCountdown
@@ -917,10 +1154,11 @@ function App() {
       ? headlineText
       : "School Days Left";
   }, [headlineText, isParentsSummerCountdown, isSummerMode, validSchedule]);
-  const focusDayOff = (date) => {
+  const focusDayOff = (date, source = FOCUS_SOURCE_SHORTCUT) => {
     setFocusedDayOff((current) => ({
       date,
       requestId: current.requestId + 1,
+      source,
     }));
   };
   const toggleCountdownUnit = () => {
@@ -963,7 +1201,7 @@ function App() {
                 </span>
               </>
             ) : (
-              headlineText
+              headlineContent
             )}
           </button>
         </h1>
@@ -987,6 +1225,8 @@ function App() {
           </div>
           <DaysOffList
             emptyMessage={isParentsSummerCountdown ? "Back to school is the next marker." : undefined}
+            focusRequestId={focusedDayOff.requestId}
+            focusSource={focusedDayOff.source}
             items={schedule.daysOff}
             now={now}
             onSelectDay={focusDayOff}
@@ -999,6 +1239,7 @@ function App() {
         {validSchedule ? (
           <SchoolCalendar
             focusRequestId={focusedDayOff.requestId}
+            focusSource={focusedDayOff.source}
             calendarWeekdayTop={calendarWeekdayTop}
             schedule={schedule}
             now={now}

@@ -118,6 +118,7 @@ body {
   padding: 0;
   color: inherit;
   font: inherit;
+  font-weight: 650;
   letter-spacing: inherit;
   line-height: inherit;
   text-align: left;
@@ -137,6 +138,13 @@ body {
 .countdown-title-toggle:disabled {
   color: inherit;
   cursor: default;
+}
+
+.countdown-title-count {
+  display: inline-block;
+  font-size: 1.4em;
+  font-weight: 700;
+  line-height: 0.8;
 }
 
 .countdown-header .countdown-title-final-day {
@@ -366,12 +374,13 @@ body {
 
 .date-list {
   --date-list-edge-fade: 18px;
+  --date-list-bump-room: 8px;
 
   display: grid;
   gap: 8px;
   max-height: 125px;
-  margin: 14px 0 0;
-  padding: 0;
+  margin: 14px calc(var(--date-list-bump-room) * -1) 0;
+  padding: 0 var(--date-list-bump-room);
   color: var(--muted);
   font-size: 0.9rem;
   line-height: 1.35;
@@ -489,6 +498,11 @@ body::-webkit-scrollbar,
   transform: translateY(1px);
 }
 
+.date-list .day-off-item-attention {
+  transform-origin: center;
+  animation: focus-target-scale 460ms ease-in-out;
+}
+
 .date-list .day-off-button:focus-visible {
   outline: 3px solid var(--calendar-focused-day);
   outline-offset: 2px;
@@ -514,22 +528,8 @@ body::-webkit-scrollbar,
   overflow: hidden;
   pointer-events: none;
   background: rgba(255, 255, 255, 0.08);
-  -webkit-backdrop-filter: blur(5px);
-  backdrop-filter: blur(5px);
-  -webkit-mask-image: linear-gradient(
-    to right,
-    transparent 0,
-    #000 var(--calendar-edge-fade),
-    #000 calc(100% - var(--calendar-edge-fade)),
-    transparent 100%
-  );
-  mask-image: linear-gradient(
-    to right,
-    transparent 0,
-    #000 var(--calendar-edge-fade),
-    #000 calc(100% - var(--calendar-edge-fade)),
-    transparent 100%
-  );
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
 }
 
 .summer-mode {
@@ -691,6 +691,23 @@ body::-webkit-scrollbar,
   isolation: isolate;
 }
 
+.react-calendar-shell :is(.Cal__Day__root, .Cal__Day-module__root).calendar-day-attention {
+  z-index: 8;
+  transform-origin: center;
+  animation: focus-target-scale 460ms ease-in-out;
+}
+
+@keyframes focus-target-scale {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+
+  48% {
+    transform: scale(1.045);
+  }
+}
+
 .react-calendar-shell .calendar-day-select-button {
   position: absolute;
   inset: 0;
@@ -727,6 +744,7 @@ body::-webkit-scrollbar,
     .calendar-last-day-sunburst,
     .calendar-day-fill,
     .calendar-day-outline,
+    .calendar-weekend-confetti,
     .calendar-day-passed-mark,
     .calendar-finish-flag
   ) {
@@ -790,6 +808,46 @@ body::-webkit-scrollbar,
   border-radius: 4px;
 }
 
+.react-calendar-shell .calendar-weekend-confetti {
+  inset: 4px;
+  z-index: 2;
+  overflow: hidden;
+  border-radius: 4px;
+  clip-path: inset(0 round 4px);
+  opacity: 0.58;
+}
+
+.react-calendar-shell .calendar-weekend-confetti-piece {
+  position: absolute;
+  bottom: -9px;
+  left: var(--weekend-confetti-left);
+  width: 5px;
+  height: 8px;
+  background: var(--weekend-confetti-color);
+  border-radius: 2px;
+  opacity: 0;
+  transform: translate3d(-50%, 10px, 0) rotate(0deg);
+  animation: calendar-weekend-confetti-fall var(--weekend-confetti-duration) linear infinite;
+  animation-delay: var(--weekend-confetti-delay);
+}
+
+@keyframes calendar-weekend-confetti-fall {
+  0% {
+    opacity: 0;
+    transform: translate3d(-50%, 10px, 0) rotate(0deg);
+  }
+
+  12% {
+    opacity: 0.72;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate3d(calc(-50% + var(--weekend-confetti-drift)), -72px, 0)
+      rotate(var(--weekend-confetti-rotate));
+  }
+}
+
 .react-calendar-shell .calendar-day-outline {
   inset: 4px;
   z-index: 3;
@@ -815,6 +873,12 @@ body::-webkit-scrollbar,
 
 .react-calendar-shell .calendar-day-outline-selected-day-off {
   border-color: var(--calendar-focused-day);
+}
+
+.react-calendar-shell .calendar-day-outline-current-weekend {
+  border-color: var(--calendar-focused-day);
+  transform-origin: center;
+  animation: calendar-current-weekend-beat 1.8s infinite;
 }
 
 .react-calendar-shell .calendar-day-outline-selected-last {
@@ -861,8 +925,35 @@ body::-webkit-scrollbar,
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 3em;
+  font-size: 2.4em;
   line-height: 1;
+  -webkit-text-stroke: 3px #ffffff;
+  paint-order: stroke fill;
+}
+
+.react-calendar-shell
+  :is(.Cal__Day__root.Cal__Day__today, .Cal__Day-module__root.Cal__Day-module__today)
+  > .calendar-day-number-current-weekend {
+  color: var(--calendar-focused-day);
+  transform-origin: center;
+  animation: calendar-current-weekend-beat 1.8s infinite;
+}
+
+@keyframes calendar-current-weekend-beat {
+  0% {
+    transform: scale(1);
+    animation-timing-function: cubic-bezier(0.12, 0, 0.39, 0);
+  }
+
+  12% {
+    transform: scale(1.08);
+    animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  62%,
+  100% {
+    transform: scale(1);
+  }
 }
 
 .react-calendar-shell .calendar-last-day-confetti {
@@ -1080,6 +1171,22 @@ html.standalone-display {
   }
 
   .react-calendar-shell .calendar-last-day-pulse {
+    animation: none;
+  }
+
+  .react-calendar-shell .calendar-weekend-confetti {
+    display: none;
+  }
+
+  .react-calendar-shell .calendar-day-outline-current-weekend,
+  .react-calendar-shell
+    :is(.Cal__Day__root.Cal__Day__today, .Cal__Day-module__root.Cal__Day-module__today)
+    > .calendar-day-number-current-weekend {
+    animation: none;
+  }
+
+  .date-list .day-off-item-attention,
+  .react-calendar-shell :is(.Cal__Day__root, .Cal__Day-module__root).calendar-day-attention {
     animation: none;
   }
 }

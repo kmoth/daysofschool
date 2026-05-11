@@ -1,4 +1,11 @@
-const formatter = new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", year: "numeric" });
+const formatter = new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric" });
+const STAT_HOLIDAY_LABELS = new Set([
+  "thanksgiving",
+  "family day",
+  "good friday",
+  "easter monday",
+  "victoria day",
+]);
 
 function pad(value) {
   return String(value).padStart(2, "0");
@@ -9,9 +16,21 @@ export function toISO(date) {
 }
 
 export function parseISO(value) {
+  if (typeof value !== "string") return null;
+
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value || "");
   if (!match) return null;
-  return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const date = new Date(year, month - 1, day);
+
+  if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) {
+    return null;
+  }
+
+  return date;
 }
 
 export function addDays(date, amount) {
@@ -21,8 +40,11 @@ export function addDays(date, amount) {
 }
 
 function parseTime(value) {
-  const match = /^(\d{2}):(\d{2})$/.exec(value || "");
+  if (typeof value !== "string") return null;
+
+  const match = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(value);
   if (!match) return null;
+
   return {
     hours: Number(match[1]),
     minutes: Number(match[2]),
@@ -33,17 +55,29 @@ function atSchoolTime(date, time) {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate(), time.hours, time.minutes, 0, 0);
 }
 
-function mergeDaysOff(daysOff) {
+function normalizeDaysOff(daysOff) {
   const days = new Map();
-  for (const item of [...daysOff]) {
-    if (item.date) {
-      days.set(item.date, {
-        ...item,
-        label: item.label || "Day off",
-      });
+  const normalizedDaysOff = [];
+  let hasInvalidDaysOff = false;
+
+  for (const item of daysOff) {
+    const date = parseISO(item?.date);
+    if (!date) {
+      hasInvalidDaysOff = true;
+      continue;
     }
+
+    const normalizedItem = {
+      ...item,
+      date: toISO(date),
+      label: item.label || "Day off",
+    };
+
+    normalizedDaysOff.push(normalizedItem);
+    days.set(normalizedItem.date, normalizedItem);
   }
-  return days;
+
+  return { allDaysOff: days, daysOff: normalizedDaysOff, hasInvalidDaysOff };
 }
 
 export function getDayOffType(item) {
@@ -53,14 +87,7 @@ export function getDayOffType(item) {
   const label = String(item?.label || "").toLowerCase();
   if (label.includes("pa day")) return "pa";
 
-  const statHolidayLabels = new Set([
-    "thanksgiving",
-    "family day",
-    "good friday",
-    "easter monday",
-    "victoria day",
-  ]);
-  if (statHolidayLabels.has(label)) return "stat";
+  if (STAT_HOLIDAY_LABELS.has(label)) return "stat";
 
   return "general";
 }
@@ -70,9 +97,15 @@ export function normalizeSchedule(rawConfig) {
   const lastDay = parseISO(rawConfig?.schoolYear?.lastDay);
   const startTime = parseTime(rawConfig?.schoolHours?.start);
   const endTime = parseTime(rawConfig?.schoolHours?.end);
-  const weekdays = new Set((rawConfig?.schoolWeekdays || []).map(String));
-  const daysOff = rawConfig?.daysOff || [];
-  const allDaysOff = mergeDaysOff(daysOff);
+  const weekdays = new Set(
+    (Array.isArray(rawConfig?.schoolWeekdays) ? rawConfig.schoolWeekdays : [])
+      .map(Number)
+      .filter((day) => Number.isInteger(day) && day >= 0 && day <= 6)
+      .map(String),
+  );
+  const normalizedDaysOff = normalizeDaysOff(Array.isArray(rawConfig?.daysOff) ? rawConfig.daysOff : []);
+  const startSeconds = startTime ? startTime.hours * 3600 + startTime.minutes * 60 : 0;
+  const endSeconds = endTime ? endTime.hours * 3600 + endTime.minutes * 60 : 0;
 
   return {
     firstDay,
@@ -80,14 +113,24 @@ export function normalizeSchedule(rawConfig) {
     startTime,
     endTime,
     weekdays,
-    daysOff,
-    allDaysOff,
-    dayLengthSeconds: startTime && endTime ? (endTime.hours * 3600 + endTime.minutes * 60) - (startTime.hours * 3600 + startTime.minutes * 60) : 0,
+    daysOff: normalizedDaysOff.daysOff,
+    allDaysOff: normalizedDaysOff.allDaysOff,
+    hasInvalidDaysOff: normalizedDaysOff.hasInvalidDaysOff,
+    dayLengthSeconds: startTime && endTime ? endSeconds - startSeconds : 0,
   };
 }
 
 export function isValidSchedule(schedule) {
-  return schedule.firstDay && schedule.lastDay && schedule.firstDay <= schedule.lastDay && schedule.startTime && schedule.endTime && schedule.dayLengthSeconds > 0 && schedule.weekdays.size > 0;
+  return Boolean(
+    schedule.firstDay &&
+      schedule.lastDay &&
+      schedule.firstDay <= schedule.lastDay &&
+      schedule.startTime &&
+      schedule.endTime &&
+      schedule.dayLengthSeconds > 0 &&
+      schedule.weekdays.size > 0 &&
+      !schedule.hasInvalidDaysOff,
+  );
 }
 
 export function isSchoolDay(date, schedule) {
@@ -161,12 +204,4 @@ export function futureDatedItems(items, now) {
 export function formatDayOff(item) {
   const date = parseISO(item.date);
   return date ? `${formatter.format(date)} - ${item.label || "Day off"}` : `${item.date} - invalid date`;
-}
-
-export function disabledWeekdays(schedule) {
-  return [0, 1, 2, 3, 4, 5, 6].filter((day) => !schedule.weekdays.has(String(day)));
-}
-
-export function disabledDates(schedule) {
-  return schedule.daysOff.map((item) => parseISO(item.date)).filter(Boolean);
 }

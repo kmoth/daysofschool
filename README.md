@@ -15,6 +15,12 @@ Build the production site with:
 npm run build
 ```
 
+Run the quality checks with:
+
+```sh
+npm run check
+```
+
 Deploy the generated `dist/` directory, not the repository root. The root
 `index.html` is for Vite during development and loads `src/main.jsx`; a static
 host will serve that JSX file with the wrong MIME type. The production

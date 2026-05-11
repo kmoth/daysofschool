@@ -12,6 +12,15 @@
     <rect x="106" y="314" width="70" height="54" rx="10" />
     <rect x="206" y="314" width="70" height="54" rx="10" />
   </g>
-  <rect x="306" y="314" width="70" height="54" rx="10" fill="#ddf6e7" />
-  <path d="M324 341l20 19 44-50" fill="none" stroke="#1f8f62" stroke-width="24" stroke-linecap="round" stroke-linejoin="round" />
+  <rect x="306" y="314" width="70" height="54" rx="10" fill="#fff4cc" />
+  <g fill="none" stroke="#dc2626" stroke-width="12" stroke-linecap="round">
+    <path d="M124 240l34 30M158 240l-34 30" />
+    <path d="M224 240l34 30M258 240l-34 30" />
+    <path d="M324 240l34 30M358 240l-34 30" />
+    <path d="M124 326l34 30M158 326l-34 30" />
+  </g>
+  <g stroke="#f59e0b" stroke-width="7" stroke-linecap="round">
+    <path d="M341 320v-8M341 370v-8M316 341h-8M374 341h-8M323 323l-6-6M365 365l-6-6M359 323l6-6M317 365l6-6" />
+    <circle cx="341" cy="341" r="15" fill="#fbbf24" stroke="none" />
+  </g>
 </svg>

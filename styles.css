@@ -2,12 +2,13 @@
   color-scheme: light;
   --ink: #1d2433;
   --muted: #657085;
-  --paper: #e5e7eb;
+  --paper: #cfd6df;
+  --page-background: linear-gradient(180deg, #ffffff 0%, #ffffff 16%, #eef1f4 58%, #cfd6df 100%);
   --panel: #ffffff;
   --calendar-ink: #05070a;
-  --calendar-school-day: #ffffff;
-  --calendar-day-off: #ddf6e7c2;
-  --calendar-focused-day: #1f8f62;
+  --calendar-day-school-bg: #ffffff;
+  --calendar-day-off-bg: #ddf6e7c2;
+  --calendar-focused-day: #0f9f68;
   --calendar-max-width: 760px;
   --layout-anchor-width: 790px;
   --layout-left-edge: max(24px, calc((100vw - var(--layout-anchor-width)) / 2));
@@ -16,16 +17,13 @@
   --calendar-weekday-top: 220px;
   --calendar-header-gap: clamp(24px, 6vh, 54px);
   --calendar-weekday-bleed: 13px;
-  --calendar-edge-fade: 118px;
-  --calendar-blur-side-gap: 0px;
   --safe-area-top: env(safe-area-inset-top, 0px);
   --safe-area-bottom: env(safe-area-inset-bottom, 0px);
-  --settings-panel-edge-gap: 24px;
-  --settings-panel-safe-gap: 16px;
-  --settings-panel-shadow-space: 42px;
-  --settings-panel-bottom: max(
-    var(--settings-panel-edge-gap),
-    calc(var(--safe-area-bottom) + var(--settings-panel-safe-gap))
+  --highlights-panel-edge-gap: 24px;
+  --highlights-panel-safe-gap: 16px;
+  --highlights-panel-bottom: max(
+    var(--highlights-panel-edge-gap),
+    calc(var(--safe-area-bottom) + var(--highlights-panel-safe-gap))
   );
   --calendar-last-day-border: linear-gradient(
     135deg,
@@ -37,8 +35,8 @@
     #8338ec 82%,
     #e63946 100%
   );
-  --day-off-general-bg: #ddf6e7;
-  --day-off-pa-stripe: rgba(31, 143, 98, 0.14);
+  --highlight-item-bg: #ddf6e7;
+  --pa-day-stripe: rgba(31, 143, 98, 0.14);
   --danger: #c23a3a;
   --shadow: 0 8px 30px rgba(36, 44, 62, 0.18), 0 2px 10px rgba(36, 44, 62, 0.08);
   font-family:
@@ -53,7 +51,7 @@
 html {
   min-height: 100%;
   overflow-x: hidden;
-  background: var(--paper);
+  background: transparent;
   overscroll-behavior-x: none;
   touch-action: pan-y pinch-zoom;
 }
@@ -71,25 +69,53 @@ body {
   margin: 0;
   min-height: 100vh;
   min-height: 100dvh;
-  background: var(--paper);
+  /* iOS Safari uses the body background as a bottom toolbar fallback. */
+  background: transparent;
   color: var(--ink);
 }
 
 #root {
   min-height: 100%;
-  background: var(--paper);
+  background: transparent;
 }
 
 .app-shell {
   position: relative;
+  isolation: isolate;
   min-height: 100vh;
   min-height: 100dvh;
   max-width: 100vw;
   overflow-x: hidden;
   overflow-x: clip;
-  background: var(--paper);
+  background: transparent;
   overscroll-behavior-x: none;
   touch-action: pan-y pinch-zoom;
+}
+
+.app-shell::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  right: 0;
+  left: 0;
+  z-index: 0;
+  height: 100vh;
+  height: 100svh;
+  height: 100dvh;
+  pointer-events: none;
+  background: var(--page-background);
+}
+
+.app-shell::after {
+  content: "";
+  position: fixed;
+  top: calc(0px - var(--safe-area-top));
+  right: 0;
+  left: 0;
+  z-index: 7;
+  height: var(--safe-area-top);
+  pointer-events: none;
+  background: #ffffff;
 }
 
 .countdown-header {
@@ -282,17 +308,16 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
-.settings-panel-frame {
+.highlights-panel-frame {
   position: fixed;
   z-index: 12;
-  bottom: calc(0px - var(--settings-panel-shadow-space));
-  left: calc(var(--layout-left-edge) - var(--settings-panel-shadow-space));
-  padding: var(--settings-panel-shadow-space);
-  padding-bottom: calc(var(--settings-panel-bottom) + var(--settings-panel-shadow-space));
+  /* Keep the fixed box off the bottom edge so Safari samples the scrolling calendar there. */
+  bottom: var(--highlights-panel-bottom);
+  left: var(--layout-left-edge);
   pointer-events: none;
 }
 
-.settings-panel {
+.highlights-panel {
   position: relative;
   width: min(360px, calc(100vw - var(--layout-left-edge) - 24px));
   max-height: calc(100svh - 48px);
@@ -305,26 +330,26 @@ body {
   box-shadow: var(--shadow);
 }
 
-.settings-panel h2 {
+.highlights-panel h2 {
   margin: 0;
   font-size: 1.08rem;
   line-height: 1.2;
 }
 
-.settings-panel-heading {
+.highlights-panel-heading {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
 }
 
-.day-focus-shortcuts {
+.calendar-shortcuts {
   display: flex;
   flex: 0 0 auto;
   gap: 6px;
 }
 
-.day-focus-shortcut {
+.calendar-shortcut {
   position: relative;
   min-width: 0;
   padding: 6px 8px;
@@ -340,15 +365,15 @@ body {
   cursor: pointer;
 }
 
-.day-focus-shortcut-selected {
+.calendar-shortcut-selected {
   border-color: var(--calendar-ink);
 }
 
-.day-focus-shortcut-last.day-focus-shortcut-selected {
+.calendar-shortcut-last.calendar-shortcut-selected {
   border-color: transparent;
 }
 
-.day-focus-shortcut-last.day-focus-shortcut-selected::before {
+.calendar-shortcut-last.calendar-shortcut-selected::before {
   content: "";
   position: absolute;
   inset: -2px;
@@ -367,20 +392,20 @@ body {
   mask-composite: exclude;
 }
 
-.day-focus-shortcut:focus-visible {
+.calendar-shortcut:focus-visible {
   outline: 3px solid var(--calendar-focused-day);
   outline-offset: 2px;
 }
 
-.date-list {
-  --date-list-edge-fade: 18px;
-  --date-list-bump-room: 8px;
+.highlights-list {
+  --highlights-list-edge-fade: 18px;
+  --highlights-list-bump-room: 8px;
 
   display: grid;
   gap: 8px;
   max-height: 125px;
-  margin: 14px calc(var(--date-list-bump-room) * -1) 0;
-  padding: 0 var(--date-list-bump-room);
+  margin: 14px calc(var(--highlights-list-bump-room) * -1) 0;
+  padding: 0 var(--highlights-list-bump-room);
   color: var(--muted);
   font-size: 0.9rem;
   line-height: 1.35;
@@ -390,63 +415,64 @@ body {
 
 html,
 body,
-.date-list {
+.highlights-list {
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
 
 html::-webkit-scrollbar,
 body::-webkit-scrollbar,
-.date-list::-webkit-scrollbar {
+.highlights-list::-webkit-scrollbar {
   display: none;
   width: 0;
   height: 0;
 }
 
-.date-list-scrollable {
+.highlights-list-scrollable {
   -webkit-mask-image: linear-gradient(
     to bottom,
     #000 0,
-    #000 calc(100% - var(--date-list-edge-fade)),
+    #000 calc(100% - var(--highlights-list-edge-fade)),
     transparent 100%
   );
   mask-image: linear-gradient(
     to bottom,
     #000 0,
-    #000 calc(100% - var(--date-list-edge-fade)),
+    #000 calc(100% - var(--highlights-list-edge-fade)),
     transparent 100%
   );
 }
 
-.date-list-scrolled {
+.highlights-list-scrolled {
   -webkit-mask-image: linear-gradient(
     to bottom,
     transparent 0,
-    #000 var(--date-list-edge-fade),
-    #000 calc(100% - var(--date-list-edge-fade)),
+    #000 var(--highlights-list-edge-fade),
+    #000 calc(100% - var(--highlights-list-edge-fade)),
     transparent 100%
   );
   mask-image: linear-gradient(
     to bottom,
     transparent 0,
-    #000 var(--date-list-edge-fade),
-    #000 calc(100% - var(--date-list-edge-fade)),
+    #000 var(--highlights-list-edge-fade),
+    #000 calc(100% - var(--highlights-list-edge-fade)),
     transparent 100%
   );
 }
 
-.date-list .date-list-empty {
+.highlights-list .highlights-list-empty {
   padding: 9px 10px;
 }
 
-.date-list .day-off-item {
+.highlights-list .highlight-item {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 12px;
   width: 100%;
   padding: 9px 10px;
-  /* color: var(--calendar-focused-day); */
+  color: var(--calendar-focused-day);
+  -webkit-text-fill-color: var(--calendar-focused-day);
   font: inherit;
   text-align: left;
   border: 0;
@@ -457,53 +483,63 @@ body::-webkit-scrollbar,
     transform 160ms ease;
 }
 
-.date-list .day-off-item-label {
+.highlights-list .highlight-item-label {
   min-width: 0;
-  color: var(--ink);
-  -webkit-text-fill-color: var(--ink);
+  color: var(--calendar-focused-day) !important;
+  -webkit-text-fill-color: var(--calendar-focused-day) !important;
+  font-weight: 550;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.date-list .day-off-item-count {
+.highlights-list .highlight-item-count {
   justify-self: end;
-  color: var(--calendar-focused-day);
-  font-weight: 750;
+  color: var(--calendar-focused-day) !important;
+  -webkit-text-fill-color: var(--calendar-focused-day) !important;
+  font-weight: 550;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
-.date-list .day-off-general {
-  background: var(--day-off-general-bg);
+.highlights-list .highlight-item-general {
+  background: var(--highlight-item-bg);
 }
 
-.date-list .day-off-pa {
+.highlights-list .highlight-item-pa {
   background:
     repeating-linear-gradient(
       135deg,
       transparent 0,
       transparent 8px,
-      var(--day-off-pa-stripe) 8px,
-      var(--day-off-pa-stripe) 14px
+      var(--pa-day-stripe) 8px,
+      var(--pa-day-stripe) 14px
     ),
-    var(--day-off-general-bg);
+    var(--highlight-item-bg);
 }
 
-.date-list .day-off-item-selected {
+.highlights-list .highlight-item-selected {
   box-shadow: inset 0 0 0 3px var(--calendar-focused-day);
 }
 
-.date-list .day-off-item-selected:active {
+.highlights-list .highlight-item-selected .highlight-item-label {
+  font-weight: 700;
+}
+
+.highlights-list .highlight-item-selected .highlight-item-count {
+  font-weight: 700;
+}
+
+.highlights-list .highlight-item-selected:active {
   transform: translateY(1px);
 }
 
-.date-list .day-off-item-attention {
+.highlights-list .highlight-item-attention {
   transform-origin: center;
   animation: focus-target-scale 460ms ease-in-out;
 }
 
-.date-list .day-off-button:focus-visible {
+.highlights-list .highlight-item-button:focus-visible {
   outline: 3px solid var(--calendar-focused-day);
   outline-offset: 2px;
 }
@@ -521,12 +557,13 @@ body::-webkit-scrollbar,
 .calendar-top-blur {
   position: fixed;
   top: 0;
-  right: var(--calendar-blur-side-gap);
-  left: var(--calendar-blur-side-gap);
+  right: 0;
+  left: 0;
   z-index: 8;
   height: var(--calendar-weekday-top);
   overflow: hidden;
   pointer-events: none;
+  background: linear-gradient(180deg, #ffffff 0%, rgba(255, 255, 255, 0.9) 58%, rgba(255, 255, 255, 0) 100%);
   -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
 }
@@ -577,15 +614,7 @@ body::-webkit-scrollbar,
   transform: scale(0.98);
 }
 
-.summer-video {
-  width: min(100%, 1120px);
-  aspect-ratio: 16 / 9;
-  border: 0;
-  background: #000000;
-  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.44);
-}
-
-.react-calendar-shell {
+.calendar-shell {
   position: relative;
   z-index: 4;
   width: min(100vw, var(--calendar-max-width));
@@ -596,7 +625,16 @@ body::-webkit-scrollbar,
   isolation: isolate;
 }
 
-.calendar-weekdays-fixed {
+.calendar-shell::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 calc(var(--safe-area-bottom) * -1);
+  z-index: -1;
+  pointer-events: none;
+  background: var(--paper);
+}
+
+.calendar-weekdays {
   position: fixed;
   top: var(--calendar-weekday-top);
   left: 50%;
@@ -615,7 +653,7 @@ body::-webkit-scrollbar,
   transform: translateX(-50%);
 }
 
-.calendar-weekdays-fixed::before {
+.calendar-weekdays::before {
   content: "";
   position: absolute;
   inset: 0 calc(var(--calendar-weekday-bleed) * -1);
@@ -625,13 +663,13 @@ body::-webkit-scrollbar,
   border-radius: 4px;
 }
 
-.calendar-weekdays-fixed li {
+.calendar-weekdays li {
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 0;
   color: var(--calendar-ink);
-  font-size: 0.78rem;
+  font-size: 0.84rem;
   font-weight: 800;
   opacity: 1;
   visibility: visible;
@@ -667,7 +705,7 @@ body::-webkit-scrollbar,
   background: transparent;
 }
 
-.react-calendar-shell :is(.Cal__Day__root, .Cal__Day-module__root) {
+.calendar-shell .calendar-day {
   position: relative;
   display: inline-flex;
   align-items: center;
@@ -681,16 +719,16 @@ body::-webkit-scrollbar,
   -webkit-user-select: none;
 }
 
-.react-calendar-shell :is(.Cal__Day__root, .Cal__Day-module__root).calendar-day-selectable {
+.calendar-shell .calendar-day-selectable {
   cursor: pointer;
 }
 
-.react-calendar-shell :is(.Cal__Day__root, .Cal__Day-module__root).calendar-day-last-school-day {
+.calendar-shell .calendar-day-last-school-day {
   z-index: 10;
   isolation: isolate;
 }
 
-.react-calendar-shell :is(.Cal__Day__root, .Cal__Day-module__root).calendar-day-attention {
+.calendar-shell .calendar-day-attention {
   z-index: 8;
   transform-origin: center;
   animation: focus-target-scale 460ms ease-in-out;
@@ -707,7 +745,7 @@ body::-webkit-scrollbar,
   }
 }
 
-.react-calendar-shell .calendar-day-select-button {
+.calendar-shell .calendar-day-select-button {
   position: absolute;
   inset: 0;
   z-index: 6;
@@ -719,48 +757,37 @@ body::-webkit-scrollbar,
   pointer-events: auto;
 }
 
-.react-calendar-shell .calendar-day-select-button:focus {
+.calendar-shell .calendar-day-select-button:focus {
   outline: none;
 }
 
-.react-calendar-shell .calendar-day-select-button:focus-visible {
+.calendar-shell .calendar-day-select-button:focus-visible {
   outline: 3px solid var(--calendar-focused-day);
   outline-offset: -5px;
 }
 
-.react-calendar-shell
-  :is(.Cal__Day__root.Cal__Day__today, .Cal__Day-module__root.Cal__Day-module__today)::before {
-  content: none !important;
-}
-
-.react-calendar-shell :is(.Cal__Day__disabled, .Cal__Day-module__disabled) {
-  color: var(--calendar-ink);
-}
-
-.react-calendar-shell
+.calendar-shell
   :is(
     .calendar-month-fill,
     .calendar-last-day-sunburst,
     .calendar-day-fill,
     .calendar-day-outline,
     .calendar-weekend-confetti,
-    .calendar-day-passed-mark,
-    .calendar-finish-flag
+    .calendar-day-passed-mark
   ) {
   position: absolute;
   pointer-events: none;
 }
 
-.react-calendar-shell .calendar-month-fill {
+.calendar-shell .calendar-month-fill {
   inset: 0;
   z-index: 0;
   background: #ffffff36;
-  /* border: 2px solid #000f; */
   border-radius: 4px;
   margin: 3px;
 }
 
-.react-calendar-shell .calendar-last-day-sunburst {
+.calendar-shell .calendar-last-day-sunburst {
   top: 50%;
   left: 50%;
   z-index: 0;
@@ -800,14 +827,14 @@ body::-webkit-scrollbar,
   }
 }
 
-.react-calendar-shell .calendar-day-fill {
+.calendar-shell .calendar-day-fill {
   inset: 4px;
   z-index: 1;
   overflow: hidden;
   border-radius: 4px;
 }
 
-.react-calendar-shell .calendar-weekend-confetti {
+.calendar-shell .calendar-weekend-confetti {
   inset: 4px;
   z-index: 2;
   overflow: hidden;
@@ -816,7 +843,7 @@ body::-webkit-scrollbar,
   opacity: 0.58;
 }
 
-.react-calendar-shell .calendar-weekend-confetti-piece {
+.calendar-shell .calendar-weekend-confetti-piece {
   position: absolute;
   bottom: -9px;
   left: var(--weekend-confetti-left);
@@ -847,14 +874,14 @@ body::-webkit-scrollbar,
   }
 }
 
-.react-calendar-shell .calendar-day-outline {
+.calendar-shell .calendar-day-outline {
   inset: 4px;
   z-index: 3;
   border: 3px solid var(--calendar-ink);
   border-radius: 4px;
 }
 
-.react-calendar-shell .calendar-last-day-pulse {
+.calendar-shell .calendar-last-day-pulse {
   transform-origin: center;
   animation: calendar-last-day-cell-pulse 1.6s ease-in-out infinite;
 }
@@ -870,21 +897,21 @@ body::-webkit-scrollbar,
   }
 }
 
-.react-calendar-shell .calendar-day-outline-selected-day-off {
+.calendar-shell .calendar-day-outline-selected-day-off {
   border-color: var(--calendar-focused-day);
 }
 
-.react-calendar-shell .calendar-day-outline-current-weekend {
+.calendar-shell .calendar-day-outline-current-weekend {
   border-color: var(--calendar-focused-day);
   transform-origin: center;
   animation: calendar-current-weekend-beat 1.8s infinite;
 }
 
-.react-calendar-shell .calendar-day-outline-selected-last {
+.calendar-shell .calendar-day-outline-selected-last {
   border-color: transparent;
 }
 
-.react-calendar-shell .calendar-day-outline-selected-last::before {
+.calendar-shell .calendar-day-outline-selected-last::before {
   content: "";
   position: absolute;
   inset: -3px;
@@ -902,25 +929,24 @@ body::-webkit-scrollbar,
   mask-composite: exclude;
 }
 
-.react-calendar-shell :is(.calendar-day-number, .Cal__Day__year, .Cal__Day-module__year) {
+.calendar-shell .calendar-day-number {
   position: relative;
-  z-index: 2;
-  color: var(--calendar-ink);
-}
-
-.react-calendar-shell .calendar-day-number {
   z-index: 4;
+  color: var(--calendar-ink);
   font-size: 1.5em;
 }
 
-.react-calendar-shell .calendar-day-last-school-day > .calendar-day-number {
+.calendar-shell .calendar-day-number-day-off {
+  color: var(--calendar-focused-day);
+  -webkit-text-fill-color: var(--calendar-focused-day);
+}
+
+.calendar-shell .calendar-day-last-school-day > .calendar-day-number {
   -webkit-text-stroke: 4px #ffffff;
   paint-order: stroke fill;
 }
 
-.react-calendar-shell
-  :is(.Cal__Day__root.Cal__Day__today, .Cal__Day-module__root.Cal__Day-module__today)
-  > .calendar-day-number.calendar-day-number-current {
+.calendar-shell .calendar-day-today > .calendar-day-number-current {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -930,9 +956,7 @@ body::-webkit-scrollbar,
   paint-order: stroke fill;
 }
 
-.react-calendar-shell
-  :is(.Cal__Day__root.Cal__Day__today, .Cal__Day-module__root.Cal__Day-module__today)
-  > .calendar-day-number-current-weekend {
+.calendar-shell .calendar-day-today > .calendar-day-number-current-weekend {
   color: var(--calendar-focused-day);
   transform-origin: center;
   animation: calendar-current-weekend-beat 1.8s infinite;
@@ -955,7 +979,7 @@ body::-webkit-scrollbar,
   }
 }
 
-.react-calendar-shell .calendar-last-day-confetti {
+.calendar-shell .calendar-last-day-confetti {
   top: 50%;
   left: 50%;
   z-index: 2;
@@ -963,7 +987,7 @@ body::-webkit-scrollbar,
   transform-origin: center;
 }
 
-.react-calendar-shell :is(.Cal__Day__month, .Cal__Day-module__month) {
+.calendar-shell .calendar-month-label {
   position: absolute;
   top: -22px;
   left: 50%;
@@ -977,22 +1001,11 @@ body::-webkit-scrollbar,
   transform: translateX(-50%);
 }
 
-/* .react-calendar-shell .calendar-day-number { */
-  /* opacity: 0.5; */
-/* } */
-
-.react-calendar-shell
-  :is(.Cal__Day__today, .Cal__Day-module__today)
-  .calendar-day-number {
-  opacity: 1;
+.calendar-shell .calendar-day-fill-school {
+  background: var(--calendar-day-school-bg);
 }
 
-.react-calendar-shell .calendar-day-fill.school-day {
-  background: var(--calendar-school-day);
-  /* border: 2px solid #000f; */
-}
-
-.react-calendar-shell .calendar-day-fill.school-day.last-school-day {
+.calendar-shell .calendar-day-fill-school.calendar-day-fill-last {
   background-color: #ffffff;
   background-image: conic-gradient(
     from 90deg,
@@ -1004,23 +1017,23 @@ body::-webkit-scrollbar,
   background-size: 14px 14px;
 }
 
-.react-calendar-shell .calendar-day-fill.day-off {
-  background: var(--calendar-day-off);
+.calendar-shell .calendar-day-fill-day-off {
+  background: var(--calendar-day-off-bg);
 }
 
-.react-calendar-shell .calendar-day-fill.day-off-pa {
+.calendar-shell .calendar-day-fill-pa {
   background:
     repeating-linear-gradient(
       135deg,
       transparent 0,
       transparent 8px,
-      var(--day-off-pa-stripe) 8px,
-      var(--day-off-pa-stripe) 14px
+      var(--pa-day-stripe) 8px,
+      var(--pa-day-stripe) 14px
     ),
-    var(--calendar-day-off);
+    var(--calendar-day-off-bg);
 }
 
-.react-calendar-shell .calendar-day-passed-mark {
+.calendar-shell .calendar-day-passed-mark {
   inset: 8px;
   z-index: 5;
   overflow: hidden;
@@ -1031,14 +1044,14 @@ body::-webkit-scrollbar,
   transform-origin: center;
 }
 
-.react-calendar-shell .calendar-day-passed-mark-lines {
+.calendar-shell .calendar-day-passed-mark-lines {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
 }
 
-.react-calendar-shell .calendar-day-passed-mark-stroke {
+.calendar-shell .calendar-day-passed-mark-stroke {
   fill: none;
   stroke: #e90000ad;
   stroke-linecap: round;
@@ -1047,37 +1060,9 @@ body::-webkit-scrollbar,
   vector-effect: non-scaling-stroke;
 }
 
-.react-calendar-shell .calendar-day-passed-mark-stroke-echo {
+.calendar-shell .calendar-day-passed-mark-stroke-echo {
   opacity: 0.48;
   stroke-width: 2.4px;
-}
-
-.react-calendar-shell .calendar-finish-flag {
-  top: 7px;
-  right: 7px;
-  z-index: 4;
-  width: 18px;
-  height: 15px;
-  border-left: 2px solid var(--calendar-ink);
-}
-
-.react-calendar-shell .calendar-finish-flag::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 2px;
-  width: 14px;
-  height: 10px;
-  border: 1px solid rgba(5, 7, 10, 0.66);
-  background-color: #ffffff;
-  background-image: conic-gradient(
-    from 90deg,
-    var(--calendar-ink) 90deg,
-    #ffffff 0 180deg,
-    var(--calendar-ink) 0 270deg,
-    #ffffff 0
-  );
-  background-size: 6px 6px;
 }
 
 .validation {
@@ -1095,15 +1080,15 @@ body::-webkit-scrollbar,
 
 @media (max-width: 860px) {
   :root {
-    --settings-panel-edge-gap: 16px;
-    --settings-panel-safe-gap: 12px;
+    --highlights-panel-edge-gap: 16px;
+    --highlights-panel-safe-gap: 12px;
   }
 
   .summer-countdown-shell .countdown-header h1 {
     font-size: 3.7rem;
   }
 
-  .settings-panel {
+  .highlights-panel {
     width: min(360px, calc(100vw - var(--layout-left-edge) - 20px));
     max-height: calc(100svh - 32px);
     max-height: calc(100dvh - 32px);
@@ -1112,11 +1097,9 @@ body::-webkit-scrollbar,
 
 @media (max-width: 560px) {
   :root {
-    --calendar-edge-fade: 0px;
     --calendar-header-gap: 18px;
-    --calendar-blur-side-gap: 0px;
-    --settings-panel-edge-gap: 10px;
-    --settings-panel-safe-gap: 10px;
+    --highlights-panel-edge-gap: 10px;
+    --highlights-panel-safe-gap: 10px;
   }
 
   .countdown-header {
@@ -1129,11 +1112,11 @@ body::-webkit-scrollbar,
     font-size: 2.9rem;
   }
 
-  .settings-panel-frame {
-    left: calc(10px - var(--settings-panel-shadow-space));
+  .highlights-panel-frame {
+    left: 10px;
   }
 
-  .settings-panel {
+  .highlights-panel {
     width: calc(100vw - 20px);
     max-height: calc(100svh - 20px);
     max-height: calc(100dvh - 20px);
@@ -1148,12 +1131,12 @@ body::-webkit-scrollbar,
 
 @media (display-mode: standalone) {
   :root {
-    --settings-panel-safe-gap: -10px;
+    --highlights-panel-safe-gap: -10px;
   }
 }
 
 html.standalone-display {
-  --settings-panel-safe-gap: -10px;
+  --highlights-panel-safe-gap: -10px;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1165,27 +1148,25 @@ html.standalone-display {
     animation: none;
   }
 
-  .react-calendar-shell .calendar-last-day-sunburst {
+  .calendar-shell .calendar-last-day-sunburst {
     animation: none;
   }
 
-  .react-calendar-shell .calendar-last-day-pulse {
+  .calendar-shell .calendar-last-day-pulse {
     animation: none;
   }
 
-  .react-calendar-shell .calendar-weekend-confetti {
+  .calendar-shell .calendar-weekend-confetti {
     display: none;
   }
 
-  .react-calendar-shell .calendar-day-outline-current-weekend,
-  .react-calendar-shell
-    :is(.Cal__Day__root.Cal__Day__today, .Cal__Day-module__root.Cal__Day-module__today)
-    > .calendar-day-number-current-weekend {
+  .calendar-shell .calendar-day-outline-current-weekend,
+  .calendar-shell .calendar-day-today > .calendar-day-number-current-weekend {
     animation: none;
   }
 
-  .date-list .day-off-item-attention,
-  .react-calendar-shell :is(.Cal__Day__root, .Cal__Day-module__root).calendar-day-attention {
+  .highlights-list .highlight-item-attention,
+  .calendar-shell .calendar-day-attention {
     animation: none;
   }
 }

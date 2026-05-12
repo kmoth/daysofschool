@@ -90,32 +90,7 @@ body {
   background: transparent;
   overscroll-behavior-x: none;
   touch-action: pan-y pinch-zoom;
-}
-
-.app-shell::before {
-  content: "";
-  position: fixed;
-  top: 0;
-  right: 0;
-  left: 0;
-  z-index: 0;
-  height: 100vh;
-  height: 100svh;
-  height: 100dvh;
-  pointer-events: none;
   background: var(--page-background);
-}
-
-.app-shell::after {
-  content: "";
-  position: fixed;
-  top: calc(0px - var(--safe-area-top));
-  right: 0;
-  left: 0;
-  z-index: 7;
-  height: var(--safe-area-top);
-  pointer-events: none;
-  background: #ffffff;
 }
 
 .countdown-header {
@@ -563,7 +538,7 @@ body::-webkit-scrollbar,
   height: var(--calendar-weekday-top);
   overflow: hidden;
   pointer-events: none;
-  background: linear-gradient(180deg, #ffffff 0%, rgba(255, 255, 255, 0.9) 58%, rgba(255, 255, 255, 0) 100%);
+  background: linear-gradient(180deg, #ffffffff 0%, #ffffff00 100%);
   -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
 }
@@ -623,15 +598,6 @@ body::-webkit-scrollbar,
   background: transparent;
   overflow: visible;
   isolation: isolate;
-}
-
-.calendar-shell::before {
-  content: "";
-  position: absolute;
-  inset: 0 0 calc(var(--safe-area-bottom) * -1);
-  z-index: -1;
-  pointer-events: none;
-  background: var(--paper);
 }
 
 .calendar-weekdays {

@@ -17,6 +17,7 @@ import { classNames } from "./ui.js";
 import { CountdownHeader } from "./components/CountdownHeader.jsx";
 import { HighlightsPanel } from "./components/HighlightsPanel.jsx";
 import { SchoolCalendar } from "./components/SchoolCalendar.jsx";
+import { ShadowClipTestPage } from "./components/ShadowClipTestPage.jsx";
 import { SummerModePage } from "./components/SummerModePage.jsx";
 import { useHeaderGapCssVar } from "./hooks/useHeaderGapCssVar.js";
 import { useNow } from "./hooks/useNow.js";
@@ -25,6 +26,21 @@ import { useStandaloneDisplayModeClass } from "./hooks/useStandaloneDisplayModeC
 export function App() {
   useStandaloneDisplayModeClass();
 
+  if (isShadowClipTestRoute()) {
+    return <ShadowClipTestPage />;
+  }
+
+  return <SchoolCountdownApp />;
+}
+
+function isShadowClipTestRoute() {
+  return (
+    window.location.pathname.endsWith("/shadow-test") ||
+    new URLSearchParams(window.location.search).has("shadow-test")
+  );
+}
+
+function SchoolCountdownApp() {
   const realNow = useNow();
   const countdownHeaderRef = useRef(null);
   const [countdownUnit, setCountdownUnit] = useState("days");

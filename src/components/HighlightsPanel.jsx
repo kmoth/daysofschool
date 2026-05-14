@@ -5,6 +5,7 @@ import { formatDayOff, futureDatedItems, getDayOffType } from "../schedule.js";
 import { classNames } from "../ui.js";
 import { useAttentionPulse } from "../hooks/useAttentionPulse.js";
 import { clampScrollTop, getScrollBehavior, scrollTargetTo, waitForScrollTop } from "../hooks/scroll.js";
+import { ConfigEditorButton, ConfigEditorOverlay } from "./ConfigEditorOverlay.jsx";
 import { PaletteSwitcher } from "./PaletteSwitcher.jsx";
 
 const GITHUB_REPO_URL = "https://github.com/kmoth/daysofschool";
@@ -188,12 +189,15 @@ function HighlightsList({
 }
 
 export const HighlightsPanel = memo(function HighlightsPanel({
+  activeConfigName,
+  baseConfig,
   emptyMessage,
   focusRequestId,
   focusSource,
   items,
   lastDayISO,
   now,
+  onConfigsChange,
   onSelectDay,
   onSelectPalette,
   paletteId,
@@ -203,6 +207,7 @@ export const HighlightsPanel = memo(function HighlightsPanel({
   validSchedule,
 }) {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isConfigEditorOpen, setIsConfigEditorOpen] = useState(false);
   const hasFlippedRef = useRef(false);
   const settingsButtonRef = useRef(null);
   const settingsBackButtonRef = useRef(null);
@@ -223,70 +228,81 @@ export const HighlightsPanel = memo(function HighlightsPanel({
   }, [isSettingsOpen]);
 
   return (
-    <div className="highlights-panel-frame">
-      <aside
-        className={classNames("highlights-panel", isSettingsOpen && "highlights-panel-settings-open")}
-        aria-label={isSettingsOpen ? "Settings" : "Highlights"}
-      >
-        <div
-          className="highlights-panel-face highlights-panel-front"
-          aria-hidden={isSettingsOpen}
-          inert={isSettingsOpen ? "" : undefined}
+    <>
+      <div className="highlights-panel-frame">
+        <aside
+          className={classNames("highlights-panel", isSettingsOpen && "highlights-panel-settings-open")}
+          aria-label={isSettingsOpen ? "Settings" : "Highlights"}
         >
-          <HighlightsList
-            emptyMessage={emptyMessage}
-            focusRequestId={focusRequestId}
-            focusSource={focusSource}
-            items={items}
-            now={now}
-            onSelectDay={onSelectDay}
-            selectedDay={selectedDay}
-          />
-          <div className="highlights-panel-actions">
-            {validSchedule && (
-              <CalendarShortcuts
-                lastDayISO={lastDayISO}
-                onSelectDay={onSelectDay}
-                selectedDay={selectedDay}
-                todayISO={todayISO}
-              />
-            )}
-            <PanelIconButton
-              buttonRef={settingsButtonRef}
-              className="settings-toggle-button"
-              label="Settings"
-              onClick={openSettings}
-            >
-              <GearIcon />
-            </PanelIconButton>
+          <div
+            className="highlights-panel-face highlights-panel-front"
+            aria-hidden={isSettingsOpen}
+            inert={isSettingsOpen ? "" : undefined}
+          >
+            <HighlightsList
+              emptyMessage={emptyMessage}
+              focusRequestId={focusRequestId}
+              focusSource={focusSource}
+              items={items}
+              now={now}
+              onSelectDay={onSelectDay}
+              selectedDay={selectedDay}
+            />
+            <div className="highlights-panel-actions">
+              {validSchedule && (
+                <CalendarShortcuts
+                  lastDayISO={lastDayISO}
+                  onSelectDay={onSelectDay}
+                  selectedDay={selectedDay}
+                  todayISO={todayISO}
+                />
+              )}
+              <PanelIconButton
+                buttonRef={settingsButtonRef}
+                className="settings-toggle-button"
+                label="Settings"
+                onClick={openSettings}
+              >
+                <GearIcon />
+              </PanelIconButton>
+            </div>
           </div>
-        </div>
 
-        <div
-          className="highlights-panel-face highlights-panel-back"
-          aria-hidden={!isSettingsOpen}
-          inert={!isSettingsOpen ? "" : undefined}
-        >
-          <div className="settings-panel-heading">
-            <PanelIconButton
-              buttonRef={settingsBackButtonRef}
-              className="settings-back-button"
-              label="Back to highlights"
-              onClick={closeSettings}
-            >
-              <BackIcon />
-            </PanelIconButton>
+          <div
+            className="highlights-panel-face highlights-panel-back"
+            aria-hidden={!isSettingsOpen}
+            inert={!isSettingsOpen ? "" : undefined}
+          >
+            <div className="settings-panel-heading">
+              <PanelIconButton
+                buttonRef={settingsBackButtonRef}
+                className="settings-back-button"
+                label="Back to highlights"
+                onClick={closeSettings}
+              >
+                <BackIcon />
+              </PanelIconButton>
+              <ConfigEditorButton onClick={() => setIsConfigEditorOpen(true)} />
+            </div>
+            <div className="settings-panel-body">
+              <section className="settings-section" aria-label="Theme">
+                <PaletteSwitcher paletteId={paletteId} palettes={palettes} onSelectPalette={onSelectPalette} />
+              </section>
+            </div>
+            <a className="settings-repo-link" href={GITHUB_REPO_URL} target="_blank" rel="noreferrer">
+              {GITHUB_REPO_URL}
+            </a>
           </div>
-          <div className="settings-panel-body">
-            <section className="settings-section" aria-label="Theme">
-              <PaletteSwitcher paletteId={paletteId} palettes={palettes} onSelectPalette={onSelectPalette} />
-            </section>
-          </div>
-          <a className="settings-repo-link" href={GITHUB_REPO_URL} target="_blank" rel="noreferrer">
-            {GITHUB_REPO_URL}
-          </a>
-        </div>
-      </aside>
-    </div>
+        </aside>
+      </div>
+      {isConfigEditorOpen && (
+        <ConfigEditorOverlay
+          activeConfigName={activeConfigName}
+          baseConfig={baseConfig}
+          onClose={() => setIsConfigEditorOpen(false)}
+          onConfigsChange={onConfigsChange}
+        />
+      )}
+    </>
   );
 });

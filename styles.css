@@ -5,7 +5,7 @@
   --paper: #cfd6df;
   --page-background: linear-gradient(180deg, #ffffff 0%, #bebebe 100%);
   --page-background-size: 100% 100vh;
-  --panel: #ffffff;
+  --panel: rgba(255, 255, 255, 0.9);
   --calendar-ink: #05070a;
   --calendar-day-school-bg: #ffffff;
   --calendar-day-off-bg: #ddf6e7c2;
@@ -120,6 +120,53 @@ body {
   pointer-events: none;
   background: var(--page-background);
   background-size: var(--page-background-size);
+}
+
+.app-shell.palette-classic-dark {
+  color-scheme: dark;
+  --ink: #edf4fb;
+  --muted: #a9b6c6;
+  --paper: #222c38;
+  --page-background: linear-gradient(180deg, #0e141b 0%, #222c38 100%);
+  --page-background-size: 100% 100vh;
+  --panel: rgba(18, 25, 34, 0.94);
+  --calendar-ink: #f6fbff;
+  --calendar-day-school-bg: #121922;
+  --calendar-day-off-bg: rgba(22, 58, 46, 0.9);
+  --calendar-focused-day: #48d597;
+  --calendar-weekday-bg: #121922;
+  --calendar-top-blur-bg: linear-gradient(180deg, rgba(14, 20, 27, 0.96) 0%, rgba(14, 20, 27, 0) 100%);
+  --calendar-month-fill-bg: rgba(246, 251, 255, 0.07);
+  --calendar-last-day-school-bg: #121922;
+  --calendar-last-day-pattern: rgba(246, 251, 255, 0.18);
+  --calendar-passed-mark: rgba(255, 107, 107, 0.84);
+  --last-day-sunburst-primary: #ffd166;
+  --last-day-sunburst-secondary: #f77f00;
+  --highlight-item-bg: #163a2e;
+  --pa-day-stripe: rgba(72, 213, 151, 0.18);
+  --panel-border: rgba(246, 251, 255, 0.13);
+  --shortcut-bg: #101720;
+  --shortcut-border: rgba(246, 251, 255, 0.24);
+  --stroke-contrast: #0a1017;
+  --title-text-shadow: 0 2px 20px rgba(0, 0, 0, 0.72);
+  --palette-switcher-border: rgba(246, 251, 255, 0.18);
+  --weekend-confetti-1: #48d597;
+  --weekend-confetti-2: #b8f6d4;
+  --weekend-confetti-3: #6bdc8a;
+  --weekend-confetti-4: #2fb978;
+  --weekend-confetti-5: #d7fae2;
+  --danger: #ff7d7d;
+  --shadow: 0 22px 58px rgba(0, 0, 0, 0.5), 0 5px 18px rgba(0, 0, 0, 0.32);
+}
+
+.app-shell.palette-classic-dark .settings-toggle-button,
+.app-shell.palette-classic-dark .settings-back-button,
+.app-shell.palette-classic-dark .config-editor-open-button {
+  color: var(--calendar-ink);
+}
+
+.app-shell.palette-classic-dark .settings-toggle-button:hover {
+  color: var(--calendar-focused-day);
 }
 
 .app-shell.palette-playground {
@@ -640,6 +687,14 @@ body {
   border: 0;
 }
 
+.config-editor-open-button {
+  width: 30px;
+  height: 30px;
+  color: #05070a;
+  background: transparent;
+  border: 0;
+}
+
 .panel-icon {
   width: 19px;
   height: 19px;
@@ -656,7 +711,7 @@ body {
 .settings-panel-heading {
   display: flex;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: space-between;
 }
 
 .settings-panel-body {
@@ -686,6 +741,302 @@ body {
 
 .settings-repo-link:hover {
   color: var(--calendar-ink);
+}
+
+.config-editor-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  padding: max(18px, calc(var(--safe-area-top) + 12px)) 18px max(18px, calc(var(--safe-area-bottom) + 12px));
+  background: rgba(5, 7, 10, 0.36);
+  pointer-events: auto;
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+
+.config-editor-dialog {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  width: min(920px, 100%);
+  max-height: min(760px, calc(100dvh - 36px));
+  overflow: hidden;
+  color: var(--ink);
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+}
+
+.config-editor-dialog:focus {
+  outline: none;
+}
+
+.config-editor-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 18px 20px 14px;
+  border-bottom: 1px solid var(--panel-border);
+}
+
+.config-editor-header h2,
+.config-editor-days-header h3 {
+  margin: 0;
+  color: var(--calendar-ink);
+  font-size: 1rem;
+  font-weight: 850;
+  line-height: 1;
+}
+
+.config-editor-close-button {
+  width: 32px;
+  height: 32px;
+}
+
+.config-editor-layout {
+  display: grid;
+  grid-template-columns: minmax(180px, 0.35fr) minmax(0, 1fr);
+  min-height: 0;
+}
+
+.config-editor-sidebar {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  min-height: 0;
+  padding: 16px;
+  overflow: auto;
+  border-right: 1px solid var(--panel-border);
+}
+
+.config-list-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 6px;
+  align-items: center;
+}
+
+.config-list-select,
+.config-list-use,
+.config-editor-new-button,
+.config-editor-add-day-button,
+.config-editor-save-button {
+  min-width: 0;
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 800;
+  line-height: 1;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.config-list-select {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px;
+  text-align: left;
+  background: var(--shortcut-bg);
+  border: 2px solid var(--shortcut-border);
+}
+
+.config-list-select span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.config-list-selected {
+  border-color: var(--calendar-focused-day);
+}
+
+.config-list-active {
+  color: var(--calendar-focused-day);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+}
+
+.config-list-use {
+  padding: 9px 8px;
+  background: var(--shortcut-bg);
+  border: 2px solid var(--shortcut-border);
+}
+
+.config-list-delete {
+  width: 34px;
+  height: 34px;
+  color: var(--danger);
+}
+
+.config-editor-new-button,
+.config-editor-add-day-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 9px 10px;
+  background: var(--shortcut-bg);
+  border: 2px solid var(--shortcut-border);
+}
+
+.config-editor-new-button {
+  width: 100%;
+}
+
+.config-editor-form {
+  display: grid;
+  grid-template-rows: auto auto auto minmax(0, 1fr) auto;
+  gap: 14px;
+  min-height: 0;
+  padding: 16px;
+}
+
+.config-editor-file-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.config-editor-file-button {
+  min-width: 0;
+  padding: 9px 10px;
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 800;
+  line-height: 1;
+  background: var(--shortcut-bg);
+  border: 2px solid var(--shortcut-border);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.config-editor-file-button:focus-visible {
+  outline: 3px solid var(--calendar-focused-day);
+  outline-offset: 2px;
+}
+
+.config-editor-file-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.config-editor-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.config-editor-field {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 850;
+  line-height: 1;
+}
+
+.config-editor-field-wide {
+  width: min(360px, 100%);
+}
+
+.config-editor-field input {
+  min-width: 0;
+  width: 100%;
+  height: 38px;
+  padding: 0 10px;
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 700;
+  line-height: 1;
+  background: var(--shortcut-bg);
+  border: 2px solid var(--shortcut-border);
+  border-radius: 8px;
+}
+
+.config-editor-field input:focus,
+.config-list-select:focus-visible,
+.config-list-use:focus-visible,
+.config-editor-new-button:focus-visible,
+.config-editor-add-day-button:focus-visible,
+.config-editor-save-button:focus-visible {
+  outline: 3px solid var(--calendar-focused-day);
+  outline-offset: 2px;
+}
+
+.config-editor-days-off {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 10px;
+  min-height: 0;
+}
+
+.config-editor-days-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.config-editor-day-list {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  min-height: 120px;
+  overflow: auto;
+}
+
+.config-editor-day-row {
+  display: grid;
+  grid-template-columns: minmax(130px, 0.34fr) minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: end;
+}
+
+.config-editor-delete-day-button {
+  width: 38px;
+  height: 38px;
+  color: var(--danger);
+}
+
+.config-editor-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding-top: 2px;
+}
+
+.config-editor-status {
+  min-width: 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 750;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.config-editor-save-button {
+  flex: 0 0 auto;
+  padding: 11px 14px;
+  color: #ffffff;
+  background: var(--calendar-focused-day);
+  border: 2px solid var(--calendar-focused-day);
 }
 
 .calendar-shortcuts {
@@ -895,7 +1246,7 @@ body::-webkit-scrollbar,
 
 .palette-switcher {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 7px;
 }
 
@@ -1485,6 +1836,10 @@ body::-webkit-scrollbar,
     max-height: calc(100svh - 32px);
     max-height: calc(100dvh - 32px);
   }
+
+  .config-editor-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 560px) {
@@ -1521,6 +1876,43 @@ body::-webkit-scrollbar,
   .calendar-top-blur {
     -webkit-mask-image: none;
     mask-image: none;
+  }
+
+  .config-editor-backdrop {
+    padding: max(10px, calc(var(--safe-area-top) + 8px)) 10px max(10px, calc(var(--safe-area-bottom) + 8px));
+  }
+
+  .config-editor-layout {
+    grid-template-columns: minmax(0, 1fr);
+    overflow: auto;
+  }
+
+  .config-editor-sidebar {
+    max-height: 190px;
+    border-right: 0;
+    border-bottom: 1px solid var(--panel-border);
+  }
+
+  .config-editor-form {
+    overflow: visible;
+  }
+
+  .config-editor-grid,
+  .config-editor-day-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .config-editor-delete-day-button {
+    justify-self: end;
+  }
+
+  .config-editor-footer {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .config-editor-save-button {
+    width: 100%;
   }
 }
 

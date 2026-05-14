@@ -7,6 +7,11 @@ export const PALETTES = [
     swatch: ["#ffffff", "#eef1f4", "#ddf6e7", "#0f9f68"],
   },
   {
+    id: "classic-dark",
+    label: "Classic Dark",
+    swatch: ["#0e141b", "#222c38", "#163a2e", "#48d597"],
+  },
+  {
     id: "playground",
     label: "Playground",
     swatch: ["#fff1a8", "#8be8ff", "#ff8a5b", "#006d77"],

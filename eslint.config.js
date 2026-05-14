@@ -1,8 +1,10 @@
 import js from "@eslint/js";
 
 const browserGlobals = {
+  Blob: "readonly",
   document: "readonly",
   ResizeObserver: "readonly",
+  URL: "readonly",
   URLSearchParams: "readonly",
   window: "readonly",
 };

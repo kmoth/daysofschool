@@ -11,6 +11,7 @@ import {
   normalizeDateRange,
 } from "./countdown.js";
 import { getTestNowFromQuery } from "./devTime.js";
+import { resolveActiveSchoolConfig } from "./configs.js";
 import { createFocusState, rolloverTodayFocus, selectFocusedDay } from "./focus.js";
 import { getRemainingSecondsToday, isValidSchedule, normalizeSchedule, toISO } from "./schedule.js";
 import { classNames } from "./ui.js";
@@ -53,9 +54,10 @@ function SchoolCountdownApp() {
   const [countdownUnit, setCountdownUnit] = useState("days");
   const [paletteId, setPaletteId] = useState(getInitialPaletteId);
   const [showParentsCountdown, setShowParentsCountdown] = useState(false);
-  const schoolSchedule = useMemo(() => normalizeSchedule(SCHOOL_COUNTDOWN_CONFIG), []);
+  const [activeConfig, setActiveConfig] = useState(() => resolveActiveSchoolConfig(SCHOOL_COUNTDOWN_CONFIG));
+  const schoolSchedule = useMemo(() => normalizeSchedule(activeConfig.config), [activeConfig.config]);
   const validSchoolSchedule = isValidSchedule(schoolSchedule);
-  const summerDateRange = useMemo(() => normalizeDateRange(SCHOOL_COUNTDOWN_CONFIG.summerBreak), []);
+  const summerDateRange = useMemo(() => normalizeDateRange(activeConfig.config.summerBreak), [activeConfig.config]);
   const summerSchedule = useMemo(() => getSummerCalendarSchedule(summerDateRange), [summerDateRange]);
   const validSummerSchedule = isValidSchedule(summerSchedule);
   const now = useMemo(() => {
@@ -119,6 +121,10 @@ function SchoolCountdownApp() {
     clearPaletteQueryParam();
   }, []);
 
+  const refreshActiveConfig = useCallback(() => {
+    setActiveConfig(resolveActiveSchoolConfig(SCHOOL_COUNTDOWN_CONFIG));
+  }, []);
+
   const focusDayOff = useCallback((date, source) => {
     setFocusedDayOff((current) => selectFocusedDay(current, date, source));
   }, []);
@@ -168,6 +174,9 @@ function SchoolCountdownApp() {
         now={todayDate}
         onSelectDay={focusDayOff}
         onSelectPalette={selectPalette}
+        activeConfigName={activeConfig.activeConfigName}
+        baseConfig={SCHOOL_COUNTDOWN_CONFIG}
+        onConfigsChange={refreshActiveConfig}
         paletteId={paletteId}
         palettes={PALETTES}
         selectedDay={focusedDayOff.date}

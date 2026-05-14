@@ -14,6 +14,13 @@ import { getTestNowFromQuery } from "./devTime.js";
 import { createFocusState, rolloverTodayFocus, selectFocusedDay } from "./focus.js";
 import { getRemainingSecondsToday, isValidSchedule, normalizeSchedule, toISO } from "./schedule.js";
 import { classNames } from "./ui.js";
+import {
+  PALETTES,
+  clearPaletteQueryParam,
+  getInitialPaletteId,
+  isPaletteId,
+  savePalettePreference,
+} from "./palettes.js";
 import { CountdownHeader } from "./components/CountdownHeader.jsx";
 import { HighlightsPanel } from "./components/HighlightsPanel.jsx";
 import { SchoolCalendar } from "./components/SchoolCalendar.jsx";
@@ -44,6 +51,7 @@ function SchoolCountdownApp() {
   const realNow = useNow();
   const countdownHeaderRef = useRef(null);
   const [countdownUnit, setCountdownUnit] = useState("days");
+  const [paletteId, setPaletteId] = useState(getInitialPaletteId);
   const [showParentsCountdown, setShowParentsCountdown] = useState(false);
   const schoolSchedule = useMemo(() => normalizeSchedule(SCHOOL_COUNTDOWN_CONFIG), []);
   const validSchoolSchedule = isValidSchedule(schoolSchedule);
@@ -107,6 +115,10 @@ function SchoolCountdownApp() {
         : "School Days Left";
   }, [headlineText, isParentsSummerCountdown, isSummerMode, validSchedule]);
 
+  useEffect(() => {
+    clearPaletteQueryParam();
+  }, []);
+
   const focusDayOff = useCallback((date, source) => {
     setFocusedDayOff((current) => selectFocusedDay(current, date, source));
   }, []);
@@ -116,12 +128,20 @@ function SchoolCountdownApp() {
     setCountdownUnit((current) => (current === "days" ? "weeks" : "days"));
   }, [canToggleCountdownUnit]);
 
+  const selectPalette = useCallback((nextPaletteId) => {
+    if (!isPaletteId(nextPaletteId)) return;
+    setPaletteId(nextPaletteId);
+    savePalettePreference(nextPaletteId);
+  }, []);
+
   if (isSummerMode && !isParentsSummerCountdown) {
     return <SummerModePage onRevealCountdown={() => setShowParentsCountdown(true)} />;
   }
 
   return (
-    <main className={classNames("app-shell", isParentsSummerCountdown && "summer-countdown-shell")}>
+    <main
+      className={classNames("app-shell", `palette-${paletteId}`, isParentsSummerCountdown && "summer-countdown-shell")}
+    >
       {validSchedule && <div className="calendar-top-blur" aria-hidden="true" />}
 
       <CountdownHeader
@@ -143,11 +163,13 @@ function SchoolCountdownApp() {
         emptyMessage={isParentsSummerCountdown ? "Back to school is the next marker." : undefined}
         focusRequestId={focusedDayOff.requestId}
         focusSource={focusedDayOff.source}
-        heading={isParentsSummerCountdown ? "Summer" : "Highlights"}
         items={schedule.daysOff}
         lastDayISO={lastDayISO}
         now={todayDate}
         onSelectDay={focusDayOff}
+        onSelectPalette={selectPalette}
+        paletteId={paletteId}
+        palettes={PALETTES}
         selectedDay={focusedDayOff.date}
         todayISO={todayISO}
         validSchedule={validSchedule}

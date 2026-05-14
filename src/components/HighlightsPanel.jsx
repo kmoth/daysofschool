@@ -5,6 +5,41 @@ import { formatDayOff, futureDatedItems, getDayOffType } from "../schedule.js";
 import { classNames } from "../ui.js";
 import { useAttentionPulse } from "../hooks/useAttentionPulse.js";
 import { clampScrollTop, getScrollBehavior, scrollTargetTo, waitForScrollTop } from "../hooks/scroll.js";
+import { PaletteSwitcher } from "./PaletteSwitcher.jsx";
+
+const GITHUB_REPO_URL = "https://github.com/kmoth/daysofschool";
+
+function GearIcon() {
+  return (
+    <svg className="panel-icon" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+      <path d="M12 8.1a3.9 3.9 0 1 0 0 7.8 3.9 3.9 0 0 0 0-7.8Z" />
+      <path d="M19.4 15a1.9 1.9 0 0 0 .38 2.1l.07.07a2.05 2.05 0 0 1-2.9 2.9l-.07-.07a1.9 1.9 0 0 0-2.1-.38 1.9 1.9 0 0 0-1.15 1.74v.2a2.05 2.05 0 0 1-4.1 0v-.12a1.9 1.9 0 0 0-1.24-1.76 1.9 1.9 0 0 0-2.1.38l-.07.07a2.05 2.05 0 1 1-2.9-2.9l.07-.07a1.9 1.9 0 0 0 .38-2.1 1.9 1.9 0 0 0-1.74-1.15h-.2a2.05 2.05 0 0 1 0-4.1h.12A1.9 1.9 0 0 0 3.6 8.6a1.9 1.9 0 0 0-.38-2.1l-.07-.07a2.05 2.05 0 1 1 2.9-2.9l.07.07a1.9 1.9 0 0 0 2.1.38h.1a1.9 1.9 0 0 0 1.15-1.74v-.2a2.05 2.05 0 0 1 4.1 0v.12a1.9 1.9 0 0 0 1.15 1.76 1.9 1.9 0 0 0 2.1-.38l.07-.07a2.05 2.05 0 1 1 2.9 2.9l-.07.07a1.9 1.9 0 0 0-.38 2.1v.1a1.9 1.9 0 0 0 1.74 1.15h.2a2.05 2.05 0 0 1 0 4.1h-.12A1.9 1.9 0 0 0 19.4 15Z" />
+    </svg>
+  );
+}
+
+function BackIcon() {
+  return (
+    <svg className="panel-icon" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+      <path d="M15 18 9 12l6-6" />
+    </svg>
+  );
+}
+
+function PanelIconButton({ buttonRef, children, className, label, onClick }) {
+  return (
+    <button
+      ref={buttonRef}
+      type="button"
+      className={classNames("panel-icon-button", className)}
+      aria-label={label}
+      title={label}
+      onClick={onClick}
+    >
+      {children}
+    </button>
+  );
+}
 
 function getHighlightItemClass(item) {
   const type = getDayOffType(item);
@@ -156,38 +191,101 @@ export const HighlightsPanel = memo(function HighlightsPanel({
   emptyMessage,
   focusRequestId,
   focusSource,
-  heading,
   items,
   lastDayISO,
   now,
   onSelectDay,
+  onSelectPalette,
+  paletteId,
+  palettes,
   selectedDay,
   todayISO,
   validSchedule,
 }) {
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const hasFlippedRef = useRef(false);
+  const settingsButtonRef = useRef(null);
+  const settingsBackButtonRef = useRef(null);
+  const openSettings = useCallback(() => {
+    hasFlippedRef.current = true;
+    setIsSettingsOpen(true);
+  }, []);
+  const closeSettings = useCallback(() => {
+    hasFlippedRef.current = true;
+    setIsSettingsOpen(false);
+  }, []);
+
+  useEffect(() => {
+    if (!hasFlippedRef.current) return;
+
+    const target = isSettingsOpen ? settingsBackButtonRef.current : settingsButtonRef.current;
+    target?.focus({ preventScroll: true });
+  }, [isSettingsOpen]);
+
   return (
     <div className="highlights-panel-frame">
-      <aside className="highlights-panel">
-        <div className="highlights-panel-heading">
-          <h2>{heading}</h2>
-          {validSchedule && (
-            <CalendarShortcuts
-              lastDayISO={lastDayISO}
-              onSelectDay={onSelectDay}
-              selectedDay={selectedDay}
-              todayISO={todayISO}
-            />
-          )}
+      <aside
+        className={classNames("highlights-panel", isSettingsOpen && "highlights-panel-settings-open")}
+        aria-label={isSettingsOpen ? "Settings" : "Highlights"}
+      >
+        <div
+          className="highlights-panel-face highlights-panel-front"
+          aria-hidden={isSettingsOpen}
+          inert={isSettingsOpen ? "" : undefined}
+        >
+          <HighlightsList
+            emptyMessage={emptyMessage}
+            focusRequestId={focusRequestId}
+            focusSource={focusSource}
+            items={items}
+            now={now}
+            onSelectDay={onSelectDay}
+            selectedDay={selectedDay}
+          />
+          <div className="highlights-panel-actions">
+            {validSchedule && (
+              <CalendarShortcuts
+                lastDayISO={lastDayISO}
+                onSelectDay={onSelectDay}
+                selectedDay={selectedDay}
+                todayISO={todayISO}
+              />
+            )}
+            <PanelIconButton
+              buttonRef={settingsButtonRef}
+              className="settings-toggle-button"
+              label="Settings"
+              onClick={openSettings}
+            >
+              <GearIcon />
+            </PanelIconButton>
+          </div>
         </div>
-        <HighlightsList
-          emptyMessage={emptyMessage}
-          focusRequestId={focusRequestId}
-          focusSource={focusSource}
-          items={items}
-          now={now}
-          onSelectDay={onSelectDay}
-          selectedDay={selectedDay}
-        />
+
+        <div
+          className="highlights-panel-face highlights-panel-back"
+          aria-hidden={!isSettingsOpen}
+          inert={!isSettingsOpen ? "" : undefined}
+        >
+          <div className="settings-panel-heading">
+            <PanelIconButton
+              buttonRef={settingsBackButtonRef}
+              className="settings-back-button"
+              label="Back to highlights"
+              onClick={closeSettings}
+            >
+              <BackIcon />
+            </PanelIconButton>
+          </div>
+          <div className="settings-panel-body">
+            <section className="settings-section" aria-label="Theme">
+              <PaletteSwitcher paletteId={paletteId} palettes={palettes} onSelectPalette={onSelectPalette} />
+            </section>
+          </div>
+          <a className="settings-repo-link" href={GITHUB_REPO_URL} target="_blank" rel="noreferrer">
+            {GITHUB_REPO_URL}
+          </a>
+        </div>
       </aside>
     </div>
   );

@@ -10,6 +10,7 @@ import {
   monthLabelFormatter,
   startOfPaddedCalendar,
 } from "../calendarMath.js";
+import { getCalendarDaySelectionState } from "../calendarDayState.js";
 import { FOCUS_SOURCE_CALENDAR, FOCUS_SOURCE_LIST } from "../focus.js";
 import { getDayOffType, isSchoolDay, parseISO, toISO } from "../schedule.js";
 import { classNames } from "../ui.js";
@@ -58,6 +59,36 @@ function getCalendarDayTypeClass(date, schedule) {
   return parsedDate && isSchoolDay(parsedDate, schedule) ? "calendar-day-fill-school" : "";
 }
 
+function CalendarPassedMark({ date, variant }) {
+  const isDayOff = variant === "day-off";
+
+  return (
+    <span
+      className={classNames("calendar-day-passed-mark", isDayOff && "calendar-day-passed-mark-day-off")}
+      style={getPassedMarkStyle(date)}
+      aria-hidden="true"
+    >
+      <svg
+        className="calendar-day-passed-mark-lines"
+        viewBox="0 0 100 100"
+        preserveAspectRatio="none"
+        focusable="false"
+      >
+        <path className="calendar-day-passed-mark-stroke" d="M10 13 C24 27 37 41 49 52 C63 65 76 77 91 88" />
+        <path
+          className="calendar-day-passed-mark-stroke calendar-day-passed-mark-stroke-echo"
+          d="M14 10 C27 29 41 43 54 56 C68 69 79 78 87 91"
+        />
+        <path className="calendar-day-passed-mark-stroke" d="M89 12 C74 27 60 42 48 54 C34 67 22 78 11 90" />
+        <path
+          className="calendar-day-passed-mark-stroke calendar-day-passed-mark-stroke-echo"
+          d="M92 16 C75 31 62 44 51 55 C37 68 24 76 14 87"
+        />
+      </svg>
+    </span>
+  );
+}
+
 function CalendarDay({
   attentionDay,
   currentDayHasNoSchoolLeft,
@@ -71,16 +102,19 @@ function CalendarDay({
   const parsedDate = parseISO(date);
   const day = parsedDate?.getDate() ?? "";
   const dayTypeClass = getCalendarDayTypeClass(date, schedule);
+  const { isDayOff, isLastSchoolDay, isPastDayOff, isSelectable } = getCalendarDaySelectionState({
+    date,
+    lastDayISO,
+    schedule,
+    todayISO,
+  });
   const isCurrentDay = date === todayISO;
-  const isSelectedDay = date === selectedDay;
+  const isSelectedDay = date === selectedDay && !isPastDayOff;
   const isAttentionDay = date === attentionDay;
-  const isDayOff = schedule.allDaysOff.has(date);
   const isWeekend = parsedDate ? parsedDate.getDay() === 0 || parsedDate.getDay() === 6 : false;
   const isCurrentWeekend = isCurrentDay && isWeekend;
   const isSchoolDate = Boolean(parsedDate && isSchoolDay(parsedDate, schedule));
   const isPastMarkedDay = isSchoolDate && (date < todayISO || (isCurrentDay && currentDayHasNoSchoolLeft));
-  const isLastSchoolDay = date === lastDayISO;
-  const isSelectable = isDayOff || isLastSchoolDay;
   const isCurrentLastSchoolDay = isCurrentDay && isLastSchoolDay;
   const selectedOutlineClass = getSelectedOutlineClass({
     isDayOff,
@@ -126,27 +160,8 @@ function CalendarDay({
           aria-hidden="true"
         />
       )}
-      {isPastMarkedDay && (
-        <span className="calendar-day-passed-mark" style={getPassedMarkStyle(date)} aria-hidden="true">
-          <svg
-            className="calendar-day-passed-mark-lines"
-            viewBox="0 0 100 100"
-            preserveAspectRatio="none"
-            focusable="false"
-          >
-            <path className="calendar-day-passed-mark-stroke" d="M10 13 C24 27 37 41 49 52 C63 65 76 77 91 88" />
-            <path
-              className="calendar-day-passed-mark-stroke calendar-day-passed-mark-stroke-echo"
-              d="M14 10 C27 29 41 43 54 56 C68 69 79 78 87 91"
-            />
-            <path className="calendar-day-passed-mark-stroke" d="M89 12 C74 27 60 42 48 54 C34 67 22 78 11 90" />
-            <path
-              className="calendar-day-passed-mark-stroke calendar-day-passed-mark-stroke-echo"
-              d="M92 16 C75 31 62 44 51 55 C37 68 24 76 14 87"
-            />
-          </svg>
-        </span>
-      )}
+      {isPastMarkedDay && <CalendarPassedMark date={date} variant="school" />}
+      {isPastDayOff && <CalendarPassedMark date={date} variant="day-off" />}
       {day === 1 && <span className="calendar-month-label">{getMonthLabel(parsedDate)}</span>}
       {isLastSchoolDay && <ConfettiBurst className="calendar-last-day-confetti" />}
       <span

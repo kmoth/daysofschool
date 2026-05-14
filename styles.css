@@ -799,16 +799,26 @@ body {
 .config-editor-layout {
   display: grid;
   grid-template-columns: minmax(180px, 0.35fr) minmax(0, 1fr);
+  min-width: 0;
   min-height: 0;
+  max-width: 100%;
+  overflow-x: hidden;
+  overscroll-behavior-x: none;
+  touch-action: pan-y pinch-zoom;
 }
 
 .config-editor-sidebar {
   display: grid;
   align-content: start;
   gap: 8px;
+  min-width: 0;
   min-height: 0;
+  max-width: 100%;
   padding: 16px;
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior-x: none;
+  touch-action: pan-y pinch-zoom;
   border-right: 1px solid var(--panel-border);
 }
 
@@ -936,12 +946,14 @@ body {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
+  min-width: 0;
 }
 
 .config-editor-field {
   display: grid;
   gap: 6px;
   min-width: 0;
+  max-width: 100%;
   color: var(--muted);
   font-size: 0.74rem;
   font-weight: 850;
@@ -953,7 +965,11 @@ body {
 }
 
 .config-editor-field input {
+  display: block;
+  min-inline-size: 0;
+  max-inline-size: 100%;
   min-width: 0;
+  inline-size: 100%;
   width: 100%;
   height: 38px;
   padding: 0 10px;
@@ -965,6 +981,18 @@ body {
   background: var(--shortcut-bg);
   border: 2px solid var(--shortcut-border);
   border-radius: 8px;
+}
+
+.config-editor-field input[type="date"],
+.config-editor-field input[type="time"] {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.config-editor-field input::-webkit-date-and-time-value {
+  width: 100%;
+  min-width: 0;
+  text-align: center;
 }
 
 .config-editor-field input:focus,
@@ -996,7 +1024,10 @@ body {
   align-content: start;
   gap: 8px;
   min-height: 120px;
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior-x: none;
+  touch-action: pan-y pinch-zoom;
 }
 
 .config-editor-day-row {
@@ -1013,11 +1044,17 @@ body {
 }
 
 .config-editor-footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 4;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 14px;
-  padding-top: 2px;
+  padding: 12px 0 0;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0) 0%, var(--panel) 28%, var(--panel) 100%);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
 }
 
 .config-editor-status {
@@ -1884,22 +1921,42 @@ body::-webkit-scrollbar,
 
   .config-editor-layout {
     grid-template-columns: minmax(0, 1fr);
-    overflow: auto;
+    overflow-x: hidden;
+    overflow-y: auto;
   }
 
   .config-editor-sidebar {
+    position: sticky;
+    top: 0;
+    z-index: 5;
     max-height: 190px;
+    background: var(--panel);
     border-right: 0;
     border-bottom: 1px solid var(--panel-border);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
   }
 
   .config-editor-form {
+    grid-template-rows: auto auto auto auto auto;
     overflow: visible;
   }
 
   .config-editor-grid,
   .config-editor-day-row {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .config-editor-days-off {
+    --config-editor-day-list-height: clamp(260px, 42dvh, 380px);
+
+    grid-template-rows: auto var(--config-editor-day-list-height);
+    min-height: calc(var(--config-editor-day-list-height) + 54px);
+  }
+
+  .config-editor-day-list {
+    height: var(--config-editor-day-list-height);
+    min-height: var(--config-editor-day-list-height);
   }
 
   .config-editor-delete-day-button {
